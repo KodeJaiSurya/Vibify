@@ -1,53 +1,0 @@
-[2024-11-03T01:55:02.748+0000] {local_task_job_runner.py:120} INFO - ::group::Pre task execution logs
-[2024-11-03T01:55:02.779+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=non-requeueable deps ti=<TaskInstance: songs_preprocessing.load_data_task manual__2024-11-03T01:54:58.521925+00:00 [queued]>
-[2024-11-03T01:55:02.790+0000] {taskinstance.py:2076} INFO - Dependencies all met for dep_context=requeueable deps ti=<TaskInstance: songs_preprocessing.load_data_task manual__2024-11-03T01:54:58.521925+00:00 [queued]>
-[2024-11-03T01:55:02.791+0000] {taskinstance.py:2306} INFO - Starting attempt 1 of 1
-[2024-11-03T01:55:02.809+0000] {taskinstance.py:2330} INFO - Executing <Task(PythonOperator): load_data_task> on 2024-11-03 01:54:58.521925+00:00
-[2024-11-03T01:55:02.822+0000] {warnings.py:112} WARNING - /home/***/.local/lib/python3.12/site-packages/***/task/task_runner/standard_task_runner.py:61: DeprecationWarning: This process (pid=1045) is multi-threaded, use of fork() may lead to deadlocks in the child.
-  pid = os.fork()
-
-[2024-11-03T01:55:02.824+0000] {standard_task_runner.py:63} INFO - Started process 1062 to run task
-[2024-11-03T01:55:02.824+0000] {standard_task_runner.py:90} INFO - Running: ['***', 'tasks', 'run', 'songs_preprocessing', 'load_data_task', 'manual__2024-11-03T01:54:58.521925+00:00', '--job-id', '20', '--raw', '--subdir', 'DAGS_FOLDER/***.py', '--cfg-path', '/tmp/tmp43a38sbt']
-[2024-11-03T01:55:02.828+0000] {standard_task_runner.py:91} INFO - Job 20: Subtask load_data_task
-[2024-11-03T01:55:02.885+0000] {task_command.py:426} INFO - Running <TaskInstance: songs_preprocessing.load_data_task manual__2024-11-03T01:54:58.521925+00:00 [running]> on host 4a174f3124db
-[2024-11-03T01:55:03.032+0000] {taskinstance.py:2648} INFO - Exporting env vars: AIRFLOW_CTX_DAG_OWNER='your_name' AIRFLOW_CTX_DAG_ID='songs_preprocessing' AIRFLOW_CTX_TASK_ID='load_data_task' AIRFLOW_CTX_EXECUTION_DATE='2024-11-03T01:54:58.521925+00:00' AIRFLOW_CTX_TRY_NUMBER='1' AIRFLOW_CTX_DAG_RUN_ID='manual__2024-11-03T01:54:58.521925+00:00'
-[2024-11-03T01:55:03.034+0000] {taskinstance.py:430} INFO - ::endgroup::
-[2024-11-03T01:55:07.046+0000] {logging_mixin.py:188} WARNING - Downloading...
-[2024-11-03T01:55:07.047+0000] {logging_mixin.py:188} WARNING - From: https://drive.google.com/uc?id=1zckGHmd_tJfyMqePfol0L-lIScstOCh9
-[2024-11-03T01:55:07.048+0000] {logging_mixin.py:188} WARNING - To: /opt/***/dags/data/dataset.csv
-[2024-11-03T01:55:07.056+0000] {logging_mixin.py:188} WARNING -   0%|          | 0.00/13.6M [00:00<?, ?B/s]
-[2024-11-03T01:55:07.213+0000] {logging_mixin.py:188} WARNING -   4%|3         | 524k/13.6M [00:00<00:03, 3.36MB/s]
-[2024-11-03T01:55:07.450+0000] {logging_mixin.py:188} WARNING -  12%|#1        | 1.57M/13.6M [00:00<00:02, 4.09MB/s]
-[2024-11-03T01:55:07.659+0000] {logging_mixin.py:188} WARNING -  19%|#9        | 2.62M/13.6M [00:00<00:02, 4.52MB/s]
-[2024-11-03T01:55:07.790+0000] {logging_mixin.py:188} WARNING -  27%|##6       | 3.67M/13.6M [00:00<00:01, 5.55MB/s]
-[2024-11-03T01:55:07.960+0000] {logging_mixin.py:188} WARNING -  35%|###4      | 4.72M/13.6M [00:00<00:01, 5.76MB/s]
-[2024-11-03T01:55:08.129+0000] {logging_mixin.py:188} WARNING -  42%|####2     | 5.77M/13.6M [00:01<00:01, 5.91MB/s]
-[2024-11-03T01:55:08.298+0000] {logging_mixin.py:188} WARNING -  50%|#####     | 6.82M/13.6M [00:01<00:01, 6.00MB/s]
-[2024-11-03T01:55:08.468+0000] {logging_mixin.py:188} WARNING -  58%|#####7    | 7.86M/13.6M [00:01<00:00, 6.06MB/s]
-[2024-11-03T01:55:08.621+0000] {logging_mixin.py:188} WARNING -  66%|######5   | 8.91M/13.6M [00:01<00:00, 6.29MB/s]
-[2024-11-03T01:55:08.732+0000] {logging_mixin.py:188} WARNING -  77%|#######7  | 10.5M/13.6M [00:01<00:00, 8.11MB/s]
-[2024-11-03T01:55:08.854+0000] {logging_mixin.py:188} WARNING -  96%|#########6| 13.1M/13.6M [00:01<00:00, 11.7MB/s]
-[2024-11-03T01:55:08.879+0000] {logging_mixin.py:188} WARNING - 100%|##########| 13.6M/13.6M [00:01<00:00, 7.46MB/s]
-[2024-11-03T01:55:09.363+0000] {warnings.py:112} WARNING - /opt/***/dags/src/song_recommendation.py:15: DtypeWarning: Columns (19) have mixed types. Specify dtype option on import or set low_memory=False.
-  df = pd.read_csv(file_path)
-
-[2024-11-03T01:55:09.401+0000] {logging_mixin.py:188} INFO - Data loaded successfully.
-[2024-11-03T01:55:09.402+0000] {python.py:237} INFO - Done. Returned value was:        danceability  energy  ...  Unnamed: 0                        title
-0             0.831   0.814  ...         NaN                          NaN
-1             0.719   0.493  ...         NaN                          NaN
-2             0.850   0.893  ...         NaN                          NaN
-3             0.476   0.781  ...         NaN                          NaN
-4             0.798   0.624  ...         NaN                          NaN
-...             ...     ...  ...         ...                          ...
-42300         0.528   0.693  ...     20995.0           Euphoric Hardstyle
-42301         0.517   0.768  ...     20996.0  Greatest Hardstyle Playlist
-42302         0.361   0.821  ...     20997.0       Best of Hardstyle 2020
-42303         0.477   0.921  ...     20998.0           Euphoric Hardstyle
-42304         0.529   0.945  ...     20999.0       Best of Hardstyle 2020
-
-[42305 rows x 22 columns]
-[2024-11-03T01:55:09.473+0000] {taskinstance.py:441} INFO - ::group::Post task execution logs
-[2024-11-03T01:55:10.829+0000] {taskinstance.py:1206} INFO - Marking task as SUCCESS. dag_id=songs_preprocessing, task_id=load_data_task, run_id=manual__2024-11-03T01:54:58.521925+00:00, execution_date=20241103T015458, start_date=20241103T015502, end_date=20241103T015510
-[2024-11-03T01:55:10.890+0000] {local_task_job_runner.py:240} INFO - Task exited with return code 0
-[2024-11-03T01:55:10.924+0000] {taskinstance.py:3503} INFO - 1 downstream tasks scheduled from follow-on schedule check
-[2024-11-03T01:55:10.926+0000] {local_task_job_runner.py:222} INFO - ::endgroup::
