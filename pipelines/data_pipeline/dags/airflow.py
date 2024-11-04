@@ -7,7 +7,6 @@ from src.song_recommendation import load_song_data, data_cleaning, scale_feature
 from src.data_preprocessing import download_emotion_data, load_emotion_data, filter_emotions, map_emotions, preprocess_pixels, preprocess_labels, aggregate_filtered_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
-conf.set('core', 'enable_parquet_xcom', 'True')
 
 default_args = {
     'owner': 'Team_Vibe',
@@ -58,7 +57,7 @@ download_emotion_data_task = PythonOperator(
     task_id='download_emotion_data_task',
     python_callable=download_emotion_data,
     dag=dag,
-    op_args=["1u7RVDNsfyoOHSmwR7R91mL8lTclbUBVv"],
+    op_args=["1Zkc0a2Ovf2S7vr0akRWKdHPGp9I5QdUT"],
 )
 
 load_emotion_data_task = PythonOperator(

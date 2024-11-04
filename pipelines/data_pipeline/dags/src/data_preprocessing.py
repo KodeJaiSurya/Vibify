@@ -11,7 +11,6 @@ def download_emotion_data(file_id):
 
 def load_emotion_data(file_path):
     df = pd.read_csv(file_path)
-
     print("FER2013 dataset loaded.")
     return df
 
