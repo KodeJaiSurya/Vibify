@@ -4,6 +4,7 @@ from sklearn.preprocessing import StandardScaler
 import os
 
 def load_song_data(file_id: str) -> pd.DataFrame:
+    """Downloads dataset from Google Drive"""
     url = f"https://drive.google.com/uc?id={file_id}"
     file_path = "dags/data/raw/song_dataset.csv"
     gdown.download(url, file_path, quiet=False)
@@ -12,6 +13,7 @@ def load_song_data(file_id: str) -> pd.DataFrame:
     return df
 
 def data_cleaning(df: pd.DataFrame) -> pd.DataFrame:
+  """Cleans the data by dropping duplicates and filtering out required coloumns"""
   df = df.dropna(subset=['song_name', 'uri'])
   df = df.drop_duplicates(subset=['song_name', 'uri'])
   cols = ['danceability', 'energy', 'key', 'loudness', 'mode', 'speechiness',

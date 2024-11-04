@@ -3,8 +3,8 @@ from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
 
-from src.song_recommendation import load_song_data, data_cleaning, scale_features, save_features
-from src.data_preprocessing import download_emotion_data, load_emotion_data, filter_emotions, map_emotions, preprocess_pixels, preprocess_labels, aggregate_filtered_data
+from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
+from src.emotion_data_pipeline import download_emotion_data, process_emotion_data, aggregate_filtered_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
 
@@ -52,60 +52,31 @@ save_song_data_task = PythonOperator(
     op_args=[scale_song_data_task.output],
 )
 
-# Pipeline for emotions
+# Pipeline for emotions with chunking
 download_emotion_data_task = PythonOperator(
     task_id='download_emotion_data_task',
     python_callable=download_emotion_data,
     dag=dag,
-    op_args=["1Zkc0a2Ovf2S7vr0akRWKdHPGp9I5QdUT"],
+    op_args=["1uMcSfJBWTgh_gqIxmB8MRYpmMV_O4PPU"],
 )
 
-load_emotion_data_task = PythonOperator(
-    task_id='load_emotion_data_task',
-    python_callable=load_emotion_data,
+process_emotion_data_task = PythonOperator(
+    task_id='process_emotion_data_task',
+    python_callable=process_emotion_data,
     dag=dag,
-    op_args=[download_emotion_data_task.output],
-)
-
-filter_data_task = PythonOperator(
-    task_id ='filter_data_task',
-    python_callable=filter_emotions,
-    op_args=[load_emotion_data_task.output],
-    dag=dag
-)
-
-map_data_task = PythonOperator(
-    task_id ='map_data_task',
-    python_callable=map_emotions,
-    op_args=[filter_data_task.output],
-    dag=dag
-)
-
-preprocess_pixels_task = PythonOperator(
-    task_id ='preprocess_pixels_task',
-    python_callable=preprocess_pixels,
-    op_args=[map_data_task.output,48,48],
-    dag=dag
-)
-
-preprocess_labels_task = PythonOperator(
-    task_id="preprocess_labels_task",
-    python_callable= preprocess_labels,
-    op_args=[map_data_task.output],
-    dag = dag
+    op_args=[download_emotion_data_task.output, 1000],  # chunk_size=1000
 )
 
 aggregate_filtered_data_task = PythonOperator(
-    task_id= "aggregate_filtered_data_task",
+    task_id="aggregate_filtered_data_task",
     python_callable=aggregate_filtered_data,
-    op_args=[preprocess_pixels_task.output,preprocess_labels_task.output],
+    op_args=[process_emotion_data_task.output],
     dag=dag
 )
 
 #setting task dependencies
 load_song_data_task >> clean_song_data_task >> scale_song_data_task >> save_song_data_task
-load_emotion_data_task >> filter_data_task >> map_data_task >> [preprocess_pixels_task, preprocess_labels_task] >> aggregate_filtered_data_task
-
+download_emotion_data_task >> process_emotion_data_task >> aggregate_filtered_data_task
 
 if __name__ =='__main__':
     dag.cli()
