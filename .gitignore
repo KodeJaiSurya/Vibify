@@ -1,3 +1,6 @@
 .env/
-data
 logs
+*.csv
+*.npy
+*.pyc
+__pycache__/

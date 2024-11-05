@@ -7,10 +7,16 @@ def load_song_data(file_id: str) -> pd.DataFrame:
     """Downloads dataset from Google Drive"""
     url = f"https://drive.google.com/uc?id={file_id}"
     file_path = "dags/data/raw/song_dataset.csv"
-    gdown.download(url, file_path, quiet=False)
-    df = pd.read_csv(file_path)
-    print("Data loaded successfully.")
-    return df
+    
+    try:
+        gdown.download(url, file_path, quiet=False)
+        df = pd.read_csv(file_path)
+        print("Data loaded successfully.")
+        return df
+    except FileNotFoundError:
+        print("File not found.")
+        return None
+
 
 def data_cleaning(df: pd.DataFrame) -> pd.DataFrame:
   """Cleans the data by dropping duplicates and filtering out required coloumns"""
