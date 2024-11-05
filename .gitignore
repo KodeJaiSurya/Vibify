@@ -1,7 +1,6 @@
 .env/
-data
 logs
-
-# Ignore Python bytecode files
+*.csv
+*.npy
 *.pyc
 __pycache__/
