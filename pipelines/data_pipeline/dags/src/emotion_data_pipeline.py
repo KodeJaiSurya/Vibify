@@ -1,9 +1,9 @@
 from pathlib import Path
 from typing import List, Tuple
 
-from src.emotion_data_downloader import DataDownloader
-from src.emotion_data_aggregator import DataAggregator
-from src.emotion_data_processor import DataProcessor
+from .emotion_data_downloader import DataDownloader
+from .emotion_data_processor import DataProcessor
+from .emotion_data_aggregator import DataAggregator
 
 def download_emotion_data(file_id: str) -> str:
     """Task to download emotion data"""
