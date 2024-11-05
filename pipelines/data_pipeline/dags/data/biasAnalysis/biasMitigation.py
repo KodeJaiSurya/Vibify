@@ -93,6 +93,5 @@ def oversample_data(df):
     
     # Step 2: Oversample underrepresented classes
     df_balanced = oversample_underrepresented_classes(df, column='emotion')
-    
     return df_balanced
 
