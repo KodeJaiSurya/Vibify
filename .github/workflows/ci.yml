@@ -7,6 +7,7 @@ on:
       - main
       - kirti
       - jai
+      - anji
   pull_request:
     branches:
       - main
@@ -22,7 +23,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4 # Sets up Python in the environment
         with:
-          python-version: ">=3.10" # Ensures the Python version is at least 3.10
+          python-version: "==3.11"
 
       - name: Install dependencies
         run: |
@@ -48,6 +49,10 @@ jobs:
         run: |
           python pipelines/data_pipeline/dags/src/emotion_data_downloader.py
           python pipelines/data_pipeline/dags/src/song_data_pipeline.py
+
+      - name: Check Data Anomaly
+        run: |
+          python pipelines/data_pipeline/dags/src/anomaly.py
           
       - name: Pull DVC data
         run: |
@@ -55,13 +60,12 @@ jobs:
 
       - name: Push DVC data
         run: |
-          dvc add pipelines/data_pipeline/dags/data/raw/dataset_fer2013.csv pipelines/data_pipeline/dags/data/raw/song_dataset.csv
+          dvc add dags/data/raw/dataset_fer2013.csv dags/data/raw/song_dataset.csv
           dvc push
 
       - name: Commit DVC changes
         run: |
-          git config --local user.email "action@github.com"
-          git config --local user.name "GitHub Action"
-          git add data.dvc .dvc/config
+          git config --local user.email "anjith16@gmail.com"
+          git config --local user.name "anuttan"
+          git add dags/data/raw/dataset_fer2013.csv.dvc dags/data/raw/song_dataset.csv.dvc .dvc/config
           git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
-          git push origin main

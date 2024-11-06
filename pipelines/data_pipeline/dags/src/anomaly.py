@@ -25,6 +25,7 @@ def getAnomalies(df: pd.DataFrame):
     if anomalies.anomaly_info:
         logger.warning("Anomalies detected in the data.")
         tfdv.display_anomalies(anomalies)
+        raise ValueError("Anomalies detected in the dataset. Workflow aborted.")
     else:
         logger.info("No anomalies detected.")
 

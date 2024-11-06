@@ -1,9 +1,8 @@
-apache-airflow>=2.0.0
-pandas>=1.0.0
-scikit-learn>=0.24.0
-numpy>=1.19.0
-python-dateutil>=2.8.0
-
-deepface==0.0.75
-gdown
-dvc
+tensorflow-data-validation==1.16.1
+apache-beam==2.60.0
+pandas==1.5.3
+scikit-learn==1.5.2
+numpy==1.26.4
+python-dateutil==2.9.0.post0
+gdown==5.2.0
+dvc==3.56.0
