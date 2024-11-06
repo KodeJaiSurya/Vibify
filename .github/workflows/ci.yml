@@ -7,6 +7,7 @@ on:
       - main
       - kirti
       - jai
+      - anji
   pull_request:
     branches:
       - main

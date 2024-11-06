@@ -27,6 +27,7 @@ def load_song_data(file_id: str) -> pd.DataFrame:
     logger.info("Starting download of song dataset")
     try:
         gdown.download(url, file_path, quiet=False)
+        print(file_path)
         df = pd.read_csv(file_path)
         logger.info("Data loaded successfully.")
         return df

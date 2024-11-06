@@ -28,6 +28,7 @@ class DataDownloader:
         try:
             url = f"https://drive.google.com/uc?id={file_id}"
             file_path = str(self.base_path / "dataset_fer2013.csv")
+            print(file_path)
             gdown.download(url, file_path, quiet=False)
             self.logger.info("FER2013 dataset downloaded successfully.")
             return file_path
