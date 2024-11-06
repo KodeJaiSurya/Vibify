@@ -27,3 +27,8 @@ def getAnomalies(df: pd.DataFrame):
         tfdv.display_anomalies(anomalies)
     else:
         logger.info("No anomalies detected.")
+
+
+if __name__ == "__main__":
+    getAnomalies(pd.read_csv("dags/data/raw/dataset_fer2013.csv"))
+    getAnomalies(pd.read_csv("dags/data/raw/song_dataset.csv"))
