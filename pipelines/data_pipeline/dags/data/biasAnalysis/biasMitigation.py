@@ -94,7 +94,7 @@ def oversample_data(df):
     # Step 2: Oversample underrepresented classes
     df_balanced = oversample_underrepresented_classes(df, column='emotion')
 
-    # Step 3: Covert array back to pixles
+    # Step 3: Covert array back to pixels
     df_balanced['pixels'] = df['pixels'].apply(lambda x: ' '.join(map(str, x)))
     
     return df_balanced
