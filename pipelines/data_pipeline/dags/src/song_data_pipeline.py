@@ -73,3 +73,7 @@ def save_features(df: pd.DataFrame, output_dir: str = "dags/data/preprocessed") 
     
     del df
     logger.info(f"Preprocessed song data saved to {output_path}")
+
+if __name__ == "__main__":
+    file_id  = "1zckGHmd_tJfyMqePfol0L-lIScstOCh9"
+    load_song_data(file_id)
