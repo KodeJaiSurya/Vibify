@@ -1,6 +1,8 @@
 from sklearn.utils import resample
+import random
 import pandas as pd
 import numpy as np
+from scipy.ndimage import rotate
 
 # Bias Mitigation using Over Sampling method
 
@@ -28,17 +30,41 @@ def identify_underrepresented_classes(df, column='emotion'):
     min_count = emotion_counts.min()
     return emotion_counts[emotion_counts < min_count * 1.5].index.tolist()
 
+def add_noise(image, noise_level=5):
+    """Add random noise to an image array."""
+    noise = np.random.randint(-noise_level, noise_level, image.shape)
+    return np.clip(image + noise, 0, 255)  # Ensure pixel values remain within bounds
+
+def adjust_brightness(image, factor=1.2):
+    """Adjust brightness by multiplying pixels with a factor."""
+    return np.clip(image * factor, 0, 255)  # Ensure pixel values remain within bounds
+
+def rotate_image(image, angle=10):
+    """Rotate a flattened 1D image array by a specified angle after reshaping it to 2D."""
+    
+    
+    # Reshape to 2D assuming the image is 48x48
+    image_2d = image.reshape(48, 48)
+    
+    # Rotate the image and flatten back to 1D
+    rotated_image = rotate(image_2d, angle=angle, reshape=False, mode='nearest')
+    return rotated_image.flatten()
+
 def augment_samples(samples):
     """
-    Augment samples by applying a simple pixel flip.
+    Augment samples by applying multiple transformations.
     Args:
         samples (pd.DataFrame): Dataframe containing rows to augment.
     Returns:
-        pd.DataFrame: Augmented samples with pixel data flipped.
+        pd.DataFrame: Augmented samples with transformed pixel data.
     """
     samples = samples.copy()
-    samples['pixels'] = samples['pixels'].apply(lambda x: np.flip(x))
+    samples['pixels'] = samples['pixels'].apply(lambda x: np.flip(x))  # Original flip
+    samples['pixels'] = samples['pixels'].apply(lambda x: add_noise(x))  # Add random noise
+    samples['pixels'] = samples['pixels'].apply(lambda x: adjust_brightness(x, factor=random.uniform(0.8, 1.2)))  # Adjust brightness
+    samples['pixels'] = samples['pixels'].apply(lambda x: rotate_image(x, angle=random.uniform(-15, 15)))  # Random rotation
     return samples
+
 
 def oversample_underrepresented_classes(df, column='emotion'):
     """
@@ -67,7 +93,7 @@ def oversample_underrepresented_classes(df, column='emotion'):
         resampled_samples = resample(
             emotion_samples, 
             replace=True, 
-            n_samples=int(1.5 * min_count),  # Resampling target
+            n_samples=int(2 * min_count),  # Resampling target
             random_state=42
         )
         augmented_samples = augment_samples(resampled_samples)
@@ -94,8 +120,7 @@ def oversample_data(df):
     # Step 2: Oversample underrepresented classes
     df_balanced = oversample_underrepresented_classes(df, column='emotion')
 
-    # Step 3: Covert array back to pixles
-    df_balanced['pixels'] = df['pixels'].apply(lambda x: ' '.join(map(str, x)))
+    # Step 3: Convert array back to pixels string format in df_balanced
+    df_balanced['pixels'] = df_balanced['pixels'].apply(lambda x: ' '.join(map(str, x)))
     
     return df_balanced
-
