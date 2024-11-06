@@ -28,7 +28,40 @@ jobs:
         run: |
           python -m pip install --upgrade pip  
           pip install -r requirements.txt
+          pip install dvc[gs]
 
       - name: Run tests
         run: |
           python -m unittest discover -s tests  # Runs unittests in the tests directory
+
+      - name: Setup GCP Authentication
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.GCP_KEY }}
+
+      - name: Setup DVC
+        run: |
+          dvc init
+          dvc remote add -d myremote gs://data_fer2013
+
+      - name: Download data
+        run: |
+          python pipelines/data_pipeline/dags/src/emotion_data_downloader.py
+          python pipelines/data_pipeline/dags/src/song_data_pipeline.py
+          
+      - name: Pull DVC data
+        run: |
+          dvc pull -v
+
+      - name: Push DVC data
+        run: |
+          dvc add pipelines/data_pipeline/dags/data/raw/dataset_fer2013.csv pipelines/data_pipeline/dags/data/raw/song_dataset.csv
+          dvc push
+
+      - name: Commit DVC changes
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add data.dvc .dvc/config
+          git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
+          git push origin main

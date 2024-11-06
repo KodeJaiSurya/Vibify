@@ -1,6 +1,7 @@
 from pathlib import Path
 import gdown
 import logging
+
 class DataDownloader:
     """Handles downloading of datasets from Google Drive"""
     
@@ -33,3 +34,8 @@ class DataDownloader:
         except Exception as e:
             self.logger.error(f"Error downloading file: {e}")
             raise
+
+if __name__ == "__main__":
+    file_id = "1-mzGbBpQxlgSowPHetsofCFjdIoxGNNc"
+    downloader = DataDownloader()
+    downloader.download_from_gdrive(file_id)
