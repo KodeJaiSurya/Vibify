@@ -1,9 +1,8 @@
 tensorflow-data-validation<2
-apache-airflow>=2.0.0,<2.2.0
+apache-beam==2.60.0
 pandas>=1.0.0,<1.4.0
 scikit-learn>=0.24.0,<0.25.0
 numpy>=1.19.0,<1.20.0
 python-dateutil>=2.8.0
-deepface==0.0.75
-gdown
-dvc
+gdown==5.2.0
+dvc==3.56.0
