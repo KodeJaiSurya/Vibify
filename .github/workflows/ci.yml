@@ -69,4 +69,3 @@ jobs:
           git config --local user.name "anuttan"
           git add dags/data/raw/dataset_fer2013.csv.dvc dags/data/raw/song_dataset.csv.dvc .dvc/config
           git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
-          git push origin main
