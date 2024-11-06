@@ -56,7 +56,7 @@ jobs:
 
       - name: Push DVC data
         run: |
-          dvc add pipelines/data_pipeline/dags/data/raw/dataset_fer2013.csv pipelines/data_pipeline/dags/data/raw/song_dataset.csv
+          dvc add dags/data/raw/dataset_fer2013.csv dags/data/raw/song_dataset.csv
           dvc push
 
       - name: Commit DVC changes
