@@ -41,7 +41,7 @@ jobs:
 
       - name: Setup DVC
         run: |
-          dvc init
+          dvc init -f
           dvc remote add -d myremote gs://data_fer2013
 
       - name: Download data
