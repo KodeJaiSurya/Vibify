@@ -7,4 +7,4 @@ python-dateutil>=2.8.0
 deepface==0.0.75
 gdown
 tensorflow>=1.15.0
-tensorflow-data-validation>=0.15.0
+tensorflow-data-validation
