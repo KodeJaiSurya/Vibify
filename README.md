@@ -9,7 +9,11 @@ This is where Vibify comes in with a cool new approach. Instead of asking you to
 ## Table of Contents
 - [Features](#features)
 - [Datasets](#datasets)
-- [Team Members](#team-members) 
+- [Team Members](#team-members)
+- [Installation](#installation)
+- [Prerequisities](#prerequisities)
+- [User Installation](#user-installation)
+- [Tools Used](#tools-used-for-mlops)
 
 ## Features
 - Real-time facial emotion detection
@@ -30,3 +34,74 @@ We primarily use the following datasets for our project:
 - Jai Surya Kode
 - Kirti Deepak Kshirsagar
 - Nihira Golasangi
+
+## Installation
+This project uses `Python == 3.11`. Please ensure that the correct version is installed on your device. This project also works on Windows, Linux and Mac.
+
+## Prerequisities
+1. git
+2. python==3.11
+3. docker daemon/desktop is running
+
+## User Installation
+The steps for User installation are as follows:
+
+1. Clone repository onto the local machine
+```
+git clone https://github.com/KodeJaiSurya/Vibify.git
+```
+2. Check python version  == 3.11
+```python
+python --version
+```
+3. Check if you have enough memory
+```docker
+docker run --rm "debian:bullseye-slim" bash -c 'numfmt --to iec $(echo $(($(getconf _PHYS_PAGES) * $(getconf PAGE_SIZE))))'
+```
+
+<hr>
+
+**FOR WINDOWS: Create a file called .env in the same folder as `docker-compose.yaml` and set the user as follows:**
+```
+AIRFLOW_UID=50000
+```
+**If you get the following error**
+```
+ValueError: Unable to configure handler 'processor'
+```
+**Setting the user manually like above fixes it**
+
+<hr>
+
+4. With Docker running, initialize the database. This step only has to be done once.
+```docker
+docker compose up airflow-init
+```
+5. Run airflow
+```docker
+docker-compose up
+```
+Wait until terminal outputs something similar to
+
+`app-airflow-webserver-1  | 127.0.0.1 - - [17/Feb/2023:09:34:29 +0000] "GET /health HTTP/1.1" 200 141 "-" "curl/7.74.0"`
+
+6. Visit localhost:8080 login with credentials
+
+```
+user:airflow
+password:airflow
+```
+7. Run the DAG by clicking on the play button on the right side of the window
+
+8. Stop docker containers
+```docker
+docker compose down
+```
+## Tools Used for MLOps
+
+- Airflow
+- Docker
+- Github Actions
+- DVC
+- Google Cloud Platform (GCP)
+- TensorFlow
