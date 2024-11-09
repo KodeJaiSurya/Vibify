@@ -4,7 +4,7 @@ from airflow import configuration as conf
 from datetime import datetime, timedelta
 
 
-from src.emotion_detection_model import load_data ,create_model, compile_model, train_model, save_model
+from src.emotion_model_pipeline import load_data ,create_model, compile_model, train_model, save_model
 
 
 conf.set('core', 'enable_xcom_pickling', 'True')
@@ -18,7 +18,7 @@ default_args = {
 
 
 dag = DAG(
-    dag_id ='model_pipeline',
+    dag_id ='model_pipeline_emotion',
     default_args=default_args,
     description='Data DAG',
     schedule_interval=None,
