@@ -8,7 +8,7 @@ from pathlib import Path
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
-from pipelines.data_pipeline.dags.src.emotion_data_downloader import DataDownloader
+from pipelines.dags.src.emotion_data_downloader import DataDownloader
 
 class TestDataDownloader(unittest.TestCase):
     
