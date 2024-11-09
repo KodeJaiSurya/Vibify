@@ -4,7 +4,7 @@ from airflow import configuration as conf
 from datetime import datetime, timedelta
 
 
-from pipelines.model_pipeline.src.emotion_detection import load_data ,create_model, compile_model, train_model, save_model
+from src.emotion_detection_model import load_data ,create_model, compile_model, train_model, save_model
 
 
 conf.set('core', 'enable_xcom_pickling', 'True')
