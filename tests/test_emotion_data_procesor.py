@@ -9,7 +9,7 @@ import sys
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
-from pipelines.data_pipeline.dags.src.emotion_data_processor import DataProcessor
+from pipelines.dags.src.emotion_data_processor import DataProcessor
 
 class TestDataProcessor(unittest.TestCase):
 

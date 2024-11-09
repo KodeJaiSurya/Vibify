@@ -8,10 +8,10 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 # Importing the classes and functions to test
-from pipelines.data_pipeline.dags.src.emotion_data_downloader import DataDownloader
-from pipelines.data_pipeline.dags.src.emotion_data_processor import DataProcessor
-from pipelines.data_pipeline.dags.src.emotion_data_aggregator import DataAggregator
-from pipelines.data_pipeline.dags.src.emotion_data_pipeline import (
+from pipelines.dags.src.emotion_data_downloader import DataDownloader
+from pipelines.dags.src.emotion_data_processor import DataProcessor
+from pipelines.dags.src.emotion_data_aggregator import DataAggregator
+from pipelines.dags.src.emotion_data_pipeline import (
     download_emotion_data,
     process_emotion_data,
     aggregate_filtered_data,

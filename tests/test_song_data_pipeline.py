@@ -15,7 +15,7 @@ project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 sys.path.append(project_root)
 
 # importing the functions
-from pipelines.data_pipeline.dags.src.song_data_pipeline import save_features, load_song_data, data_cleaning, scale_features
+from pipelines.dags.src.song_data_pipeline import save_features, load_song_data, data_cleaning, scale_features
 
 class TestLoadSongData(unittest.TestCase):
 
