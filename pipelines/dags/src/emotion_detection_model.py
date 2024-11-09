@@ -1,10 +1,8 @@
-
 import numpy as np
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense
 from typing import Dict, Tuple
 from tensorflow.keras.callbacks import History
-
 
 
 def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0.2, random_state: int = 42) -> Dict[str, np.ndarray]:
@@ -28,10 +26,8 @@ def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=test_size, random_state=random_state
     )
+    
     return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
-
-
-
 
 
 def create_model(input_shape: Tuple[int, ...]) -> Sequential:
@@ -49,10 +45,11 @@ def create_model(input_shape: Tuple[int, ...]) -> Sequential:
         Dense(64, activation='relu'),
         Dense(4, activation='softmax')  # Assuming 4 output classes
     ])
+    
     return model
 
 
-    def compile_model(model: Sequential) -> Sequential:
+def compile_model(model: Sequential) -> Sequential:
     """
     Compiles the model with specified optimizer, loss, and metrics.
     
@@ -62,11 +59,16 @@ def create_model(input_shape: Tuple[int, ...]) -> Sequential:
     Returns:
         Sequential: Compiled Keras model.
     """
-    model.compile(optimizer='adam', loss='sparse_categorical_crossentropy', metrics=['accuracy'])
+    model.compile(
+        optimizer='adam', 
+        loss='sparse_categorical_crossentropy', 
+        metrics=['accuracy']
+    )
+    
     return model
 
 
-    def train_model(model: Sequential, X_train: np.ndarray, y_train: np.ndarray, 
+def train_model(model: Sequential, X_train: np.ndarray, y_train: np.ndarray, 
                 epochs: int = 30, batch_size: int = 64, validation_split: float = 0.2) -> Dict[str, object]:
     """
     Trains the model on the provided data.
@@ -89,10 +91,11 @@ def create_model(input_shape: Tuple[int, ...]) -> Sequential:
         validation_split=validation_split,
         verbose=1
     )
+    
     return {'model': model, 'history': history.history}
 
 
-    def save_model(model: Model, filename: str = 'emotion_detection_model_4_classes.h5') -> str:
+def save_model(model: Model, filename: str = 'emotion_detection_model_4_classes.h5') -> str:
     """
     Saves the trained model to a file.
     
