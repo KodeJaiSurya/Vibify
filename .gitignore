@@ -5,3 +5,4 @@ logs
 *.pyc
 __pycache__/
 /pipelines/data_pipeline/dags/src/__pycache__
+*.pyc
