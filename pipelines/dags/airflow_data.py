@@ -4,7 +4,6 @@ from airflow import configuration as conf
 from datetime import datetime, timedelta
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
-from src.song_model_pipeline import apply_kmeans, getCluster_Mood
 from src.emotion_data_pipeline import download_emotion_data, process_emotion_data, aggregate_filtered_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
@@ -46,26 +45,11 @@ scale_song_data_task = PythonOperator(
     op_args=[clean_song_data_task.output],
 )
 
-apply_kmeans_song_data_task = PythonOperator(
-    task_id='apply_kmeans_song_data_task',
-    python_callable=apply_kmeans,
-    dag=dag,
-    op_args=[scale_song_data_task.output],
-)
-
-get_mood_song_task = PythonOperator(
-    task_id='get_mood_song_task',
-    python_callable=getCluster_Mood,
-    dag=dag,
-    op_args=[apply_kmeans_song_data_task.output],
-)
-
-
 save_song_data_task = PythonOperator(
     task_id='save_song_data_task',
     python_callable=save_features,
     dag=dag,
-    op_args=[get_mood_song_task.output],
+    op_args=[scale_song_data_task.output],
 )
 
 # Pipeline for emotions with chunking

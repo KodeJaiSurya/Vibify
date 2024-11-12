@@ -28,12 +28,11 @@ def visualize_clusters(pca_df: pd.DataFrame, df: pd.DataFrame) -> None:
     plt.show()
     logging.info("Cluster visualization displayed successfully")
  
-def apply_kmeans(df: pd.DataFrame, n_clusters: int = 4) -> pd.DataFrame:
+def apply_kmeans(df: pd.DataFrame, principal_components, n_clusters: int = 4) -> pd.DataFrame:
     """Applies KMeans clustering to the PCA data."""
     logging.info("Starting KMeans with %d clusters", n_clusters)
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    data = apply_pca(df)
-    df['cluster'] = kmeans.fit_predict(data)
+    df['cluster'] = kmeans.fit_predict(principal_components)
     #visualize_clusters(data, df)
     logging.info("KMeans clustering applied with %d clusters", n_clusters)
     logging.info("Cluster distribution: %s", df['cluster'].value_counts())

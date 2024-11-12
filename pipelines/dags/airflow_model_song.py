@@ -2,9 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
-
-
-from src.song_model_pipeline import apply_pca, visualize_clusters,apply_kmeans, getCluster_Mood
+from src.song_model_pipeline import apply_pca, apply_kmeans, assign_mood
 
 
 conf.set('core', 'enable_xcom_pickling', 'True')
@@ -16,23 +14,37 @@ default_args = {
     'retry_delay': timedelta(minutes=5), # Delay before retries
 }
 
-
-
 dag = DAG(
     dag_id ='model_pipeline_song',
     default_args=default_args,
-    description='Data DAG',
+    description='Song Model DAG',
     schedule_interval=None,
     catchup=False,
  )
 
- apply_pca_task = PythonOperator(
+apply_pca_task = PythonOperator(
     task_id="apply_pca_task",
-    python_callable=load_data,
+    python_callable=apply_pca,
     dag=dag,
-    op_args=[],
+    op_args=[scale_song_data_task.output],
  )
 
+apply_kmeans_task = PythonOperator(
+    task_id='apply_kmeans_song_data_task',
+    python_callable=apply_kmeans,
+    dag=dag,
+    op_args=[scale_song_data_task.output, apply_pca_task.output],
+)
 
+assign_mood_song_task = PythonOperator(
+    task_id='assign_mood_song_task',
+    python_callable=assign_mood,
+    dag=dag,
+    op_args=[apply_kmeans_task.output],
+)
  
 
+apply_pca_task >> apply_kmeans_task >> assign_mood_song_task >> save_song_data_task
+
+if __name__ =='__main__':
+    dag.cli()
