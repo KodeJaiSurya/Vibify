@@ -3,6 +3,7 @@ from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
 from src.song_model_pipeline import apply_pca, apply_kmeans, assign_mood
+from airflow_data import scale_song_data_task
 
 
 conf.set('core', 'enable_xcom_pickling', 'True')
