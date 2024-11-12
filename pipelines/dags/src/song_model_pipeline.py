@@ -1,19 +1,22 @@
 import pandas as pd
-import numpy as np
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
-
+import logging
+ 
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+ 
+ 
 def apply_pca(data: pd.DataFrame, n_components: int = 10) -> pd.DataFrame:
     """Applies PCA to reduce data dimensions."""
-
+ 
     features = [i for i in data.columns if data[i].dtype != 'object']
     pca = PCA(n_components=n_components)
     principal_components = pca.fit_transform(data[features])
-    print("PCA applied successfully.")
+    logging.info("PCA applied successfully. Explained variance ratio: %s", pca.explained_variance_ratio_)
     return principal_components
-
+ 
 def visualize_clusters(pca_df: pd.DataFrame, df: pd.DataFrame) -> None:
     """Visualizes clusters in a 2D PCA plot."""
     plt.figure(figsize=(10, 8))
@@ -23,46 +26,67 @@ def visualize_clusters(pca_df: pd.DataFrame, df: pd.DataFrame) -> None:
     plt.ylabel("Principal Component 2")
     plt.legend(title="Cluster")
     plt.show()
-
+    logging.info("Cluster visualization displayed successfully")
+ 
 def apply_kmeans(df: pd.DataFrame, n_clusters: int = 4) -> pd.DataFrame:
     """Applies KMeans clustering to the PCA data."""
+    logging.info("Starting KMeans with %d clusters", n_clusters)
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
     data = apply_pca(df)
     df['cluster'] = kmeans.fit_predict(data)
-    visualize_clusters(data, df)
-    print(f"KMeans clustering applied with {n_clusters} clusters.")
-    print(df['cluster'].value_counts())
+    #visualize_clusters(data, df)
+    logging.info("KMeans clustering applied with %d clusters", n_clusters)
+    logging.info("Cluster distribution: %s", df['cluster'].value_counts())
     return df
-
-def getCluster_Mood(df: pd.DataFrame) -> pd.DataFrame:
-  sns.set(style="whitegrid")
-  cluster_means = df.groupby('cluster')[['valence', 'energy']].mean().reset_index()
-  colors = sns.color_palette('viridis', 2)
-  bar_width = 0.35
-  index = cluster_means['cluster']
-
-  plt.figure(figsize=(10, 6))
-
-  plt.bar(index - bar_width/2, cluster_means['valence'], bar_width, color=colors[0], label='Valence')
-  plt.bar(index + bar_width/2, cluster_means['energy'], bar_width, color=colors[1], label='Energy')
-
-  for i, valence, energy in zip(index, cluster_means['valence'], cluster_means['energy']):
-    plt.text(i - 0.15, valence + 0.01, f'{valence:.2f}', color='black', fontweight='bold')
-    plt.text(i + 0.15, energy + 0.01, f'{energy:.2f}', color='black', fontweight='bold')
-
-  plt.xlabel('Cluster')
-  plt.ylabel('Average Value')
-  plt.title('Average Valence and Energy for Each Cluster')
-  plt.xticks(index, cluster_means['cluster'])
-  plt.legend()
-
-  plt.grid(axis='y', linestyle='--', alpha=0.7)
-
-  plt.tight_layout()
-  plt.show()
-  df['mood'] = np.where(df['cluster'] == 0, 'Sad', np.nan)
-  df['mood'] = np.where(df['cluster'] == 1, 'Calm', df['mood'])
-  df['mood'] = np.where(df['cluster'] == 2, 'Angry', df['mood'])
-  df['mood'] = np.where(df['cluster'] == 3, 'Happy', df['mood'])
-  return df
-
+ 
+def plotMoodBarChart(mood_mapping, cluster_means):
+    sns.set(style="whitegrid")
+    colors = sns.color_palette('viridis', 2)
+    bar_width = 0.35
+    index = cluster_means['cluster']
+    plt.figure(figsize=(10, 6))
+ 
+    plt.bar(index - bar_width/2, cluster_means['valence'], bar_width, color=colors[0], label='Valence')
+    plt.bar(index + bar_width/2, cluster_means['energy'], bar_width, color=colors[1], label='Energy')
+ 
+    for i, valence, energy in zip(index, cluster_means['valence'], cluster_means['energy']):
+        plt.text(i - 0.15, valence + 0.01, f'{valence:.2f}', color='black', fontweight='bold')
+        plt.text(i + 0.15, energy + 0.01, f'{energy:.2f}', color='black', fontweight='bold')
+ 
+    plt.xlabel('Emotion')
+    plt.ylabel('Average Value')
+    plt.title('Average Valence and Energy for Each Emotion')
+    emotion_labels = [mood_mapping[cluster] for cluster in index]
+    plt.xticks(index, emotion_labels)
+ 
+    plt.legend()
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.tight_layout()
+    plt.show()
+    logging.info("Mood bar chart plotted successfully")
+ 
+ 
+def assign_mood(df: pd.DataFrame) -> pd.DataFrame:
+    cluster_means = df.groupby('cluster')[['valence', 'energy']].mean().reset_index()
+    cluster_means = cluster_means.sort_values('valence', ascending=False)
+    moods = []
+    for i, row in cluster_means.iterrows():
+        if i < 2:
+            if row['energy'] > cluster_means['energy'].median():
+                moods.append('Happy')
+            else:
+                moods.append('Sad')
+        else:
+            if row['energy'] > cluster_means['energy'].median():
+                moods.append('Angry')
+            else:
+                moods.append('Calm')
+ 
+    mood_mapping = dict(zip(cluster_means['cluster'], moods))
+    df['mood'] = df['cluster'].map(mood_mapping)
+ 
+    #plotMoodBarChart(mood_mapping, cluster_means)
+    print(df['mood'].value_counts())
+    logging.info("Mood assignment completed with distribution: %s", df['mood'].value_counts())
+    return df
+ 
