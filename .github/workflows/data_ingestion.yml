@@ -11,12 +11,25 @@ on:
 
 env:
   GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
-  KAGGLE_DATASET: nicolejyt/facialexpressionrecognition
-  GCS_PATH: data/raw
 
 jobs:
   update-dataset:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        dataset:
+          - {
+              name: 'facial-expression',
+              kaggle_id: 'nicolejyt/facialexpressionrecognition',
+              gcs_path: 'data/raw/facial_expression',
+              specific_file: ''
+            }
+          - {
+              name: 'spotify-genres',
+              kaggle_id: 'mrmorj/dataset-of-songs-in-spotify',
+              gcs_path: 'data/raw/spotify',
+              specific_file: 'genres_v2.csv'
+            }
     
     steps:
     - name: Checkout repository
@@ -43,9 +56,9 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_KEY }}
 
-    - name: Download Facial Expression Recognition dataset
+    - name: Download Dataset
       run: |
-        kaggle datasets download -d ${{ env.KAGGLE_DATASET }} --unzip -p ./data
+        kaggle datasets download -d ${{ matrix.dataset.kaggle_id }} --unzip -p ./data
         echo "Dataset contents:"
         ls -la ./data
 
@@ -55,12 +68,13 @@ jobs:
         from google.cloud import storage
         import os
         import logging
+        import shutil
 
         # Configure logging
         logging.basicConfig(level=logging.INFO)
         logger = logging.getLogger(__name__)
 
-        def upload_to_gcs(bucket_name, source_dir, destination_path):
+        def upload_to_gcs(bucket_name, source_dir, destination_path, specific_file=''):
             try:
                 storage_client = storage.Client()
                 bucket = storage_client.bucket(bucket_name)
@@ -76,24 +90,35 @@ jobs:
                 total_files = 0
                 total_size = 0
                 
-                for root, _, files in os.walk(source_dir):
-                    for file in files:
-                        local_path = os.path.join(root, file)
-                        relative_path = os.path.relpath(local_path, source_dir)
-                        blob_path = f"{destination_path}/{relative_path}"
+                # If specific file is specified, only upload that file
+                if specific_file:
+                    files_to_process = [os.path.join(source_dir, specific_file)]
+                else:
+                    files_to_process = []
+                    for root, _, files in os.walk(source_dir):
+                        for file in files:
+                            files_to_process.append(os.path.join(root, file))
+
+                for local_path in files_to_process:
+                    if not os.path.exists(local_path):
+                        logger.warning(f"File not found: {local_path}")
+                        continue
+
+                    file = os.path.basename(local_path)
+                    if file.startswith('.'):
+                        continue
                         
-                        # Skip hidden files and directories
-                        if file.startswith('.'):
-                            continue
-                            
-                        blob = bucket.blob(blob_path)
-                        blob.upload_from_filename(local_path)
-                        
-                        size = os.path.getsize(local_path) / (1024 * 1024)  # Size in MB
-                        total_size += size
-                        total_files += 1
-                        
-                        logger.info(f"Uploaded {local_path} ({size:.2f} MB) to gs://{bucket_name}/{blob_path}")
+                    relative_path = os.path.basename(local_path)
+                    blob_path = f"{destination_path}/{relative_path}"
+                    
+                    blob = bucket.blob(blob_path)
+                    blob.upload_from_filename(local_path)
+                    
+                    size = os.path.getsize(local_path) / (1024 * 1024)  # Size in MB
+                    total_size += size
+                    total_files += 1
+                    
+                    logger.info(f"Uploaded {local_path} ({size:.2f} MB) to gs://{bucket_name}/{blob_path}")
                 
                 logger.info(f"Upload complete. Total files: {total_files}, Total size: {total_size:.2f} MB")
                 
@@ -104,7 +129,8 @@ jobs:
         upload_to_gcs(
             '${{ env.GCS_BUCKET }}',
             './data',
-            '${{ env.GCS_PATH }}'
+            '${{ matrix.dataset.gcs_path }}',
+            '${{ matrix.dataset.specific_file }}'
         )
         EOF
 
