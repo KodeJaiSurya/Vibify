@@ -47,12 +47,12 @@ jobs:
 
       - name: Download data
         run: |
-          python pipelines/data_pipeline/dags/src/emotion_data_downloader.py
-          python pipelines/data_pipeline/dags/src/song_data_pipeline.py
+          python pipelines/dags/src/emotion_data_downloader.py
+          python pipelines/dags/src/song_data_pipeline.py
 
       - name: Check Data Anomaly
         run: |
-          python pipelines/data_pipeline/dags/src/anomaly.py
+          python pipelines/dags/src/anomaly.py
           
       - name: Pull DVC data
         run: |
