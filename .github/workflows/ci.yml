@@ -64,7 +64,7 @@ jobs:
       # Run emotion data pipeline to get preprocessed data
       - name: Run emotion data pipeline
         run: |
-          python -m pipelines/dags/src/emotion_data_pipeline
+          python pipelines/dags/src/emotion_data_pipeline.py
 
       # Train model
       - name: Run model training script
