@@ -4,6 +4,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
+import os
  
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
  
@@ -89,3 +90,12 @@ def assign_mood(df: pd.DataFrame) -> pd.DataFrame:
     logging.info("Mood assignment completed with distribution: %s", df['mood'].value_counts())
     return df
  
+def save_final(df: pd.DataFrame, output_dir: str = "dags/data/final") -> None:
+    """Saves the preprocessed dataframe"""
+    logging.info("Saving final song data with cluster to local directory")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "clusters.csv")
+    df.to_csv(output_path, index=False)
+    
+    del df
+    logging.info(f"Final song data with  saved to {output_path}")
