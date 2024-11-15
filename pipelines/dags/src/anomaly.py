@@ -3,7 +3,7 @@ import pandas as pd
 import logging
 
 # unused variable just to trigger
-unused_variablee = "This variable is not used"
+unused_variableee = "This variable is not used"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
