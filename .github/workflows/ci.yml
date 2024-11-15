@@ -53,19 +53,3 @@ jobs:
       - name: Check Data Anomaly
         run: |
           python pipelines/dags/src/anomaly.py
-          
-      - name: Pull DVC data
-        run: |
-          dvc pull -v
-
-      - name: Push DVC data
-        run: |
-          dvc add dags/data/raw/dataset_fer2013.csv dags/data/raw/song_dataset.csv
-          dvc push
-
-      - name: Commit DVC changes
-        run: |
-          git config --local user.email "anjith16@gmail.com"
-          git config --local user.name "anuttan"
-          git add dags/data/raw/dataset_fer2013.csv.dvc dags/data/raw/song_dataset.csv.dvc .dvc/config
-          git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
