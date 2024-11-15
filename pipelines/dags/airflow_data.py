@@ -5,7 +5,6 @@ from datetime import datetime, timedelta
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
 from src.emotion_data_pipeline import download_emotion_data, process_emotion_data, aggregate_filtered_data
-from data.biasAnalysis.biasMitigation import oversample_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
 
@@ -58,7 +57,7 @@ download_emotion_data_task = PythonOperator(
     task_id='download_emotion_data_task',
     python_callable=download_emotion_data,
     dag=dag,
-    op_args=["1uMcSfJBWTgh_gqIxmB8MRYpmMV_O4PPU"],
+    op_args=["1-mzGbBpQxlgSowPHetsofCFjdIoxGNNc"],
 )
 
 process_emotion_data_task = PythonOperator(
@@ -68,23 +67,16 @@ process_emotion_data_task = PythonOperator(
     op_args=[download_emotion_data_task.output, 1000],
 )
 
-bias_mitigation_emotion_task = PythonOperator(
-    task_id="bias_mitigation_emotion_task",
-    python_callable=oversample_data,
-    op_args=[process_emotion_data_task.output],
-    dag=dag
-)
-
 aggregate_filtered_data_task = PythonOperator(
     task_id="aggregate_filtered_data_task",
     python_callable=aggregate_filtered_data,
-    op_args=[bias_mitigation_emotion_task.output],
+    op_args=[process_emotion_data_task.output],
     dag=dag
 )
 
 #setting task dependencies
 load_song_data_task >> clean_song_data_task >> scale_song_data_task >> save_song_data_task
-download_emotion_data_task >> process_emotion_data_task >> bias_mitigation_emotion_task >> aggregate_filtered_data_task
+download_emotion_data_task >> process_emotion_data_task >> aggregate_filtered_data_task
 
 if __name__ =='__main__':
     dag.cli()
