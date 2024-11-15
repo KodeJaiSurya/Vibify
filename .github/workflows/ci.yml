@@ -69,6 +69,7 @@ jobs:
       # Train model
       - name: Run model training script
         run: |
+          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
           python -m pipelines/dags/src/emotion_model_pipeline
 
       - name: Send Slack notification (success)
