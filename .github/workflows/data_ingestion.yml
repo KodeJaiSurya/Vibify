@@ -1,0 +1,112 @@
+name: Monthly Facial Expression Dataset Update
+
+on:
+  schedule:
+    # Runs at 00:00 on the 1st of every month
+    - cron: '0 0 1 * *'
+  workflow_dispatch:  # Allows manual trigger
+
+env:
+  GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+  KAGGLE_DATASET: nicolejyt/facialexpressionrecognition
+  GCS_PATH: data/raw
+
+jobs:
+  update-dataset:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.10'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install kaggle google-cloud-storage
+
+    - name: Configure Kaggle credentials
+      run: |
+        mkdir -p ~/.kaggle
+        echo "{\"username\":\"${{ secrets.KAGGLE_USERNAME }}\",\"key\":\"${{ secrets.KAGGLE_KEY }}\"}" > ~/.kaggle/kaggle.json
+        chmod 600 ~/.kaggle/kaggle.json
+
+    - name: Configure GCP credentials
+      uses: google-github-actions/auth@v1
+      with:
+        credentials_json: ${{ secrets.GCP_KEY }}
+
+    - name: Download Facial Expression Recognition dataset
+      run: |
+        kaggle datasets download -d ${{ env.KAGGLE_DATASET }} --unzip -p ./data
+        echo "Dataset contents:"
+        ls -la ./data
+
+    - name: Upload to GCS with replacement
+      run: |
+        python - <<EOF
+        from google.cloud import storage
+        import os
+        import logging
+
+        # Configure logging
+        logging.basicConfig(level=logging.INFO)
+        logger = logging.getLogger(__name__)
+
+        def upload_to_gcs(bucket_name, source_dir, destination_path):
+            try:
+                storage_client = storage.Client()
+                bucket = storage_client.bucket(bucket_name)
+                
+                # Delete existing files
+                logger.info(f"Deleting existing files in gs://{bucket_name}/{destination_path}")
+                blobs = bucket.list_blobs(prefix=destination_path)
+                for blob in blobs:
+                    blob.delete()
+                    logger.info(f"Deleted: gs://{bucket_name}/{blob.name}")
+                
+                # Upload new files
+                total_files = 0
+                total_size = 0
+                
+                for root, _, files in os.walk(source_dir):
+                    for file in files:
+                        local_path = os.path.join(root, file)
+                        relative_path = os.path.relpath(local_path, source_dir)
+                        blob_path = f"{destination_path}/{relative_path}"
+                        
+                        # Skip hidden files and directories
+                        if file.startswith('.'):
+                            continue
+                            
+                        blob = bucket.blob(blob_path)
+                        blob.upload_from_filename(local_path)
+                        
+                        size = os.path.getsize(local_path) / (1024 * 1024)  # Size in MB
+                        total_size += size
+                        total_files += 1
+                        
+                        logger.info(f"Uploaded {local_path} ({size:.2f} MB) to gs://{bucket_name}/{blob_path}")
+                
+                logger.info(f"Upload complete. Total files: {total_files}, Total size: {total_size:.2f} MB")
+                
+            except Exception as e:
+                logger.error(f"Error during upload: {str(e)}")
+                raise
+
+        upload_to_gcs(
+            '${{ env.GCS_BUCKET }}',
+            './data',
+            '${{ env.GCS_PATH }}'
+        )
+        EOF
+
+    - name: Cleanup local files
+      if: always()  # Run cleanup even if previous steps fail
+      run: |
+        rm -rf ./data
+        echo "Cleaned up local files"
