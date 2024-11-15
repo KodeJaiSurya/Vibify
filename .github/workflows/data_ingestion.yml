@@ -3,7 +3,7 @@ name: Data Updation
 on:
   push:
     branches:
-      - main
+      - anji
   #schedule:
     # Runs at 00:00 on the 1st of every month
     #- cron: '0 0 1 * *'
