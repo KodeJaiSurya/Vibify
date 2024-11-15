@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Surface/NU/Vibify/pipelines/dags/src/mlruns/317926643839228499/65a53b3ea8314ebcb6a2b7ebe490633d/artifacts
+end_time: 1731688679088
+entry_point_name: ''
+experiment_id: '317926643839228499'
+lifecycle_stage: active
+run_id: 65a53b3ea8314ebcb6a2b7ebe490633d
+run_name: carefree-bat-708
+run_uuid: 65a53b3ea8314ebcb6a2b7ebe490633d
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1731687904958
+status: 3
+tags: []
+user_id: Surface

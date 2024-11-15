@@ -1,0 +1,6 @@
+artifact_location: file:///C:/Users/Surface/NU/Vibify/pipelines/dags/src/mlruns/854121127519128219
+creation_time: 1731689171128
+experiment_id: '854121127519128219'
+last_update_time: 1731689171128
+lifecycle_stage: active
+name: emotion_recognition_experiment

@@ -1,0 +1,6 @@
+artifact_location: file:///C:/Users/Surface/NU/Vibify/pipelines/dags/src/mlruns/317926643839228499
+creation_time: 1731687026248
+experiment_id: '317926643839228499'
+last_update_time: 1731687026248
+lifecycle_stage: active
+name: emotion_model_tuning

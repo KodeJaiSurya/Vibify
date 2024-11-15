@@ -1,0 +1,15 @@
+artifact_uri: file:///C:/Users/Surface/NU/Vibify/pipelines/dags/src/mlruns/317926643839228499/e159a775cd83473381578d15d2a96f22/artifacts
+end_time: 1731687904122
+entry_point_name: ''
+experiment_id: '317926643839228499'
+lifecycle_stage: active
+run_id: e159a775cd83473381578d15d2a96f22
+run_name: invincible-ox-95
+run_uuid: e159a775cd83473381578d15d2a96f22
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1731687903839
+status: 3
+tags: []
+user_id: Surface
