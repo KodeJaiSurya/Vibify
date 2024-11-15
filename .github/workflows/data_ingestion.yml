@@ -3,10 +3,10 @@ name: Monthly Facial Expression Dataset Update
 on:
   push:
     branches:
-        - anji
-  # schedule:
+      - main
+  schedule:
     # Runs at 00:00 on the 1st of every month
-    # - cron: '0 0 1 * *'
+    - cron: '0 0 1 * *'
   workflow_dispatch:  # Allows manual trigger
 
 env:
