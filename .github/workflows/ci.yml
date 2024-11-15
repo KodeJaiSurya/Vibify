@@ -64,12 +64,12 @@ jobs:
       # Run emotion data pipeline to get preprocessed data
       - name: Run emotion data pipeline
         run: |
-          python -m pipelines/dags/src/emotion_data_pipeline.py  
+          python -m pipelines/dags/src/emotion_data_pipeline
 
       # Train model
       - name: Run model training script
         run: |
-          python -m pipelines/dags/src/emotion_model_pipeline.py
+          python -m pipelines/dags/src/emotion_model_pipeline
 
       - name: Send Slack notification (success)
         if: success()
