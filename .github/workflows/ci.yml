@@ -61,10 +61,10 @@ jobs:
         run: |
           python pipelines/dags/src/anomaly.py
 
-      # Run emotion data pipeline to get preprocessed data
       - name: Run emotion data pipeline
         run: |
-          python pipelines/dags/src/emotion_data_pipeline.py
+          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
+          python -m pipelines.dags.src.emotion_data_pipeline  
 
       # Train model
       - name: Run model training script
