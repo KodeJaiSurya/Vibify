@@ -85,7 +85,7 @@ class TestDataProcessor(unittest.TestCase):
         self.assertIsNone(X)
         self.assertIsNone(y)
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_processor.np.save')
+    @patch('pipelines.dags.src.emotion_data_processor.np.save')
     def test_save_chunk(self, mock_save):
         """Test saving a processed chunk"""
         X = np.random.rand(6, 48, 48, 1)
@@ -95,7 +95,7 @@ class TestDataProcessor(unittest.TestCase):
         self.assertEqual(X_path, self.processor.temp_dir / "X_chunk_0.npy")
         self.assertEqual(y_path, self.processor.temp_dir / "y_chunk_0.npy")
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_processor.pd.read_csv')
+    @patch('pipelines.dags.src.emotion_data_processor.pd.read_csv')
     def test_process_all_chunks(self, mock_read_csv):
         """Test processing all chunks from a file"""
         mock_read_csv.return_value = [self.sample_data] 
