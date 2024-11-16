@@ -1,6 +1,7 @@
 # Fairness Analysis install fairlearn
 from fairlearn.metrics import MetricFrame, selection_rate
 from sklearn.metrics import accuracy_score, f1_score
+import logging
 
 
 def fairness_analysis(y_test, y_pred, data, indices_test):
@@ -47,7 +48,7 @@ def fairness_analysis(y_test, y_pred, data, indices_test):
 
     # Bias Alert Flag
     results['bias'] = results.apply(flag_bias, axis=1)
-    print("Bias Validation Results: \n", results)
+    logging.info("Bias Validation Results: \n", results)
     if 1 in results['bias']:
       return 1
     else:
