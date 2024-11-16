@@ -1,12 +1,14 @@
 import numpy as np
+import pandas as pd
+from sklearn.model_selection import train_test_split
 from tensorflow.keras.models import Sequential, Model
 from tensorflow.keras.layers import Dense
 from typing import Dict, Tuple
 from tensorflow.keras.callbacks import History
 
-
+"""
 def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0.2, random_state: int = 42) -> Dict[str, np.ndarray]:
-    """
+
     Loads preprocessed data from .npy files and splits it into training and testing sets.
     
     Args:
@@ -17,7 +19,7 @@ def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0
     
     Returns:
         dict: A dictionary containing X_train, X_test, y_train, y_test.
-    """
+    
     from sklearn.model_selection import train_test_split
 
     X = np.load(X_path)
@@ -28,6 +30,30 @@ def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0
     )
     
     return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test}
+"""
+def load_data(X_path: str = 'X.npy', y_path: str = 'y.npy', test_size: float = 0.2, random_state: int = 42) -> Dict[str, np.ndarray]:
+    """
+    Loads preprocessed data from .npy files and splits it into training and testing sets.
+   
+    Args:
+        X_path (str): Path to the preprocessed features file (X.npy).
+        y_path (str): Path to the preprocessed labels file (y.npy).
+        test_size (float): Proportion of the dataset to include in the test split.
+        random_state (int): Seed used by the random number generator.
+   
+    Returns:
+        dict: A dictionary containing X_train, X_test, y_train, y_test.
+    """
+ 
+    X = np.load(X_path)
+    y = np.load(y_path)
+    indices = pd.Series(range(len(X)))
+   
+    X_train, X_test, y_train, y_test, _, indices_test = train_test_split(
+        X, y, indices, test_size=test_size, random_state=random_state
+    )
+   
+    return {'X_train': X_train, 'X_test': X_test, 'y_train': y_train, 'y_test': y_test, 'indices_test': indices_test}
 
 
 def create_model(input_shape: Tuple[int, ...]) -> Sequential:
