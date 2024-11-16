@@ -2,7 +2,7 @@ from airflow import DAG
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
-from src.song_model_pipeline import apply_pca, apply_kmeans, assign_mood
+from src.song_model_pipeline import apply_pca, apply_kmeans, assign_mood, save_final
 from airflow_data import scale_song_data_task
 
 
@@ -43,9 +43,16 @@ assign_mood_song_task = PythonOperator(
     dag=dag,
     op_args=[apply_kmeans_task.output],
 )
+
+save_final_task = PythonOperator(
+    task_id='save_final_task',
+    python_callable=save_final,
+    dag=dag,
+    op_args=[assign_mood_song_task.output],
+)
  
 
-apply_pca_task >> apply_kmeans_task >> assign_mood_song_task >> save_song_data_task
+apply_pca_task >> apply_kmeans_task >> assign_mood_song_task >> save_final_task
 
 if __name__ =='__main__':
     dag.cli()
