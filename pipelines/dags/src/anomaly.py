@@ -2,6 +2,9 @@ import tensorflow_data_validation as tfdv
 import pandas as pd
 import logging
 
+# unused variable just to trigger
+unused_variableee = "This variable is not used"
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
@@ -21,7 +24,7 @@ def getAnomalies(df: pd.DataFrame):
     logger.info("Validating data statistics against schema to find anomalies.")
     anomalies = tfdv.validate_statistics(statistics=data_stats, schema=schema)
     
-    # Check if any anomalies are detected
+    # Check if any anomalies are detected and raise error if detected
     if anomalies.anomaly_info:
         logger.warning("Anomalies detected in the data.")
         tfdv.display_anomalies(anomalies)

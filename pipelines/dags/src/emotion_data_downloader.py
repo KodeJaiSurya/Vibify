@@ -1,5 +1,5 @@
 from pathlib import Path
-import gdown
+import opendatasets as od
 import logging
 
 class DataDownloader:
@@ -22,14 +22,14 @@ class DataDownloader:
         if not self.logger.handlers:
             self.logger.addHandler(console_handler)
     
-    def download_from_gdrive(self, file_id: str) -> str:
-        """Downloads dataset from Google Drive"""
-        self.logger.info("Starting download from Google Drive")
+    def download_from_kaggle(self) -> str:
+        """Downloads dataset from Kaggle"""
+        self.logger.info("Starting download from Kaggle")
+        
         try:
-            url = f"https://drive.google.com/uc?id={file_id}"
-            file_path = str(self.base_path / "dataset_fer2013.csv")
-            print(file_path)
-            gdown.download(url, file_path, quiet=False)
+            url = f"https://www.kaggle.com/datasets/nicolejyt/facialexpressionrecognition"
+            file_path = str(self.base_path)
+            od.download_kaggle_dataset(url, file_path)
             self.logger.info("FER2013 dataset downloaded successfully.")
             return file_path
         except Exception as e:
@@ -37,6 +37,5 @@ class DataDownloader:
             raise
 
 if __name__ == "__main__":
-    file_id = "1-mzGbBpQxlgSowPHetsofCFjdIoxGNNc"
     downloader = DataDownloader()
-    downloader.download_from_gdrive(file_id)
+    downloader.download_from_kaggle()

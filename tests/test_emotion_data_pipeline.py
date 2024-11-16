@@ -19,7 +19,7 @@ from pipelines.dags.src.emotion_data_pipeline import (
 
 class TestEmotionDataPipeline(unittest.TestCase):
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_pipeline.DataDownloader')
+    @patch('pipelines.dags.src.emotion_data_pipeline.DataDownloader')
     def test_download_emotion_data(self, MockDataDownloader):
         """Test downloading emotion data"""
         mock_downloader = MockDataDownloader.return_value
@@ -29,7 +29,7 @@ class TestEmotionDataPipeline(unittest.TestCase):
         self.assertEqual(result, "mock_file_path")
         mock_downloader.download_from_gdrive.assert_called_once_with(file_id)
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_pipeline.DataProcessor')
+    @patch('pipelines.dags.src.emotion_data_pipeline.DataProcessor')
     def test_process_emotion_data(self, MockDataProcessor):
         """Test processing emotion data"""
         mock_processor = MockDataProcessor.return_value
@@ -39,7 +39,7 @@ class TestEmotionDataPipeline(unittest.TestCase):
         self.assertEqual(result, [(Path("chunk_X.npy"), Path("chunk_y.npy"))])
         mock_processor.process_all_chunks.assert_called_once_with(file_path)
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_pipeline.DataAggregator')
+    @patch('pipelines.dags.src.emotion_data_pipeline.DataAggregator')
     def test_aggregate_filtered_data(self, MockDataAggregator):
         """Test aggregating filtered data"""
         mock_aggregator = MockDataAggregator.return_value
@@ -52,7 +52,7 @@ class TestEmotionDataPipeline(unittest.TestCase):
         mock_aggregator.save_final.assert_called_once()
         mock_aggregator.cleanup_chunks.assert_called_once_with(chunk_paths)
 
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_pipeline.DataAggregator')
+    @patch('pipelines.dags.src.emotion_data_pipeline.DataAggregator')
     def test_aggregate_filtered_data_save_failure(self, MockDataAggregator):
         """Test aggregating filtered data with a save failure"""
         mock_aggregator = MockDataAggregator.return_value

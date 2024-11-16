@@ -1,18 +1,25 @@
 name: CI
 
 on:
-  # Triggers the workflow on push or pull request events for the main and my branch
+  # Triggers the workflow on push or pull request events for the main and specific branches
   push:
     branches:
       - main
       - kirti
       - jai
       - anji
+    paths:
+      - '**'  # triggers build steps for any change
+      # - 'pipelines/**'  # triggers model training and validation whenever new code is pushed that affects the model
   pull_request:
     branches:
       - main
+    paths:
+      - '**'  # triggers build steps for any change
+      # - 'pipelines/**'  # triggers model training and validation whenever new code is pushed that affects the model
 
 jobs:
+  # Build and Test job
   build:
     runs-on: ubuntu-latest # Uses the latest version of Ubuntu
 
@@ -47,25 +54,71 @@ jobs:
 
       - name: Download data
         run: |
-          python pipelines/data_pipeline/dags/src/emotion_data_downloader.py
-          python pipelines/data_pipeline/dags/src/song_data_pipeline.py
+          python pipelines/dags/src/emotion_data_downloader.py
+          python pipelines/dags/src/song_data_pipeline.py
 
       - name: Check Data Anomaly
         run: |
-          python pipelines/data_pipeline/dags/src/anomaly.py
-          
-      - name: Pull DVC data
-        run: |
-          dvc pull -v
+          python pipelines/dags/src/anomaly.py
 
-      - name: Push DVC data
+      - name: Run emotion data pipeline
         run: |
-          dvc add dags/data/raw/dataset_fer2013.csv dags/data/raw/song_dataset.csv
-          dvc push
+          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
+          python -m pipelines.dags.src.emotion_data_pipeline  
 
-      - name: Commit DVC changes
+      # Train model
+      - name: Run model training script
         run: |
-          git config --local user.email "anjith16@gmail.com"
-          git config --local user.name "anuttan"
-          git add dags/data/raw/dataset_fer2013.csv.dvc dags/data/raw/song_dataset.csv.dvc .dvc/config
-          git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
+          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
+          python pipelines/dags/src/emotion_model_pipeline.py 
+
+      - name: Send Slack notification (success)
+        if: success()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Build succeeded!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      - name: Send Slack notification (failure)
+        if: failure()
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Build failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  # # Model Training and Validation Job
+  # model_training:
+  #   runs-on: ubuntu-latest
+  #   needs: build  # Ensures that build job completes successfully first
+
+  #   # This job will run only if there are changes to the `pipelines/` folder
+  #   if: |
+  #     github.event_name == 'push' && contains(join(github.event.head_commit.modified), 'pipelines/') || 
+  #     github.event_name == 'pull_request' && contains(join(github.event.pull_request.head.repo.modified_files), 'pipelines/')
+    
+  #   steps:
+  #     - name: Check out code
+  #       uses: actions/checkout@v3
+
+  #     - name: Set up Python
+  #       uses: actions/setup-python@v4
+  #       with:
+  #         python-version: "3.11"
+
+  #     - name: Install dependencies
+  #       run: |
+  #         python -m pip install --upgrade pip  
+  #         pip install -r requirements.txt
+  #         pip install dvc[gs]
+
+  #     - name: Send Slack notification (success)
+  #       if: success()
+  #       run: |
+  #         curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training and validation succeeded!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  #     - name: Send Slack notification (failure)
+  #       if: failure()
+  #       run: |
+  #         curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training and validation failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+  #     # - name: Model Training
+  #     #   run: python path/to/model_training_script.py
+
+  #     # - name: Model Validation
+  #     #   run: python path/to/model_validation_script.py --threshold 

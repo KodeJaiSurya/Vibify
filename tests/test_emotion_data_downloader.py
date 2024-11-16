@@ -12,7 +12,7 @@ from pipelines.dags.src.emotion_data_downloader import DataDownloader
 
 class TestDataDownloader(unittest.TestCase):
     
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_downloader.gdown.download')
+    @patch('pipelines.dags.src.emotion_data_downloader.gdown.download')
     def test_successful_download(self, mock_download):
         """Testing successful download of a dataset"""
         downloader = DataDownloader()
@@ -25,7 +25,7 @@ class TestDataDownloader(unittest.TestCase):
         self.assertEqual(result, expected_path)
         self.assertTrue(Path(downloader.base_path).exists()) 
     
-    @patch('pipelines.data_pipeline.dags.src.emotion_data_downloader.gdown.download')
+    @patch('pipelines.dags.src.emotion_data_downloader.gdown.download')
     def test_download_error_handling(self, mock_download):
         """Test error handling during download"""
         downloader = DataDownloader()

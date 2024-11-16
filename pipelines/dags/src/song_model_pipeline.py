@@ -4,6 +4,7 @@ from sklearn.cluster import KMeans
 import matplotlib.pyplot as plt
 import seaborn as sns
 import logging
+import os
  
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
  
@@ -28,12 +29,11 @@ def visualize_clusters(pca_df: pd.DataFrame, df: pd.DataFrame) -> None:
     plt.show()
     logging.info("Cluster visualization displayed successfully")
  
-def apply_kmeans(df: pd.DataFrame, n_clusters: int = 4) -> pd.DataFrame:
+def apply_kmeans(df: pd.DataFrame, principal_components, n_clusters: int = 4) -> pd.DataFrame:
     """Applies KMeans clustering to the PCA data."""
     logging.info("Starting KMeans with %d clusters", n_clusters)
     kmeans = KMeans(n_clusters=n_clusters, random_state=42)
-    data = apply_pca(df)
-    df['cluster'] = kmeans.fit_predict(data)
+    df['cluster'] = kmeans.fit_predict(principal_components)
     #visualize_clusters(data, df)
     logging.info("KMeans clustering applied with %d clusters", n_clusters)
     logging.info("Cluster distribution: %s", df['cluster'].value_counts())
@@ -90,3 +90,12 @@ def assign_mood(df: pd.DataFrame) -> pd.DataFrame:
     logging.info("Mood assignment completed with distribution: %s", df['mood'].value_counts())
     return df
  
+def save_final(df: pd.DataFrame, output_dir: str = "dags/data/final") -> None:
+    """Saves the preprocessed dataframe"""
+    logging.info("Saving final song data with cluster to local directory")
+    os.makedirs(output_dir, exist_ok=True)
+    output_path = os.path.join(output_dir, "clusters.csv")
+    df.to_csv(output_path, index=False)
+    
+    del df
+    logging.info(f"Final song data with  saved to {output_path}")
