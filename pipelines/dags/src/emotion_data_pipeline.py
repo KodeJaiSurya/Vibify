@@ -2,9 +2,9 @@ from pathlib import Path
 from typing import List, Tuple
 import logging
 
-from .emotion_data_downloader import DataDownloader
-from .emotion_data_processor import DataProcessor
-from .emotion_data_aggregator import DataAggregator
+from pipelines.dags.src.emotion_data_downloader import DataDownloader
+from pipelines.dags.src.emotion_data_processor import DataProcessor
+from pipelines.dags.src.emotion_data_aggregator import DataAggregator
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
