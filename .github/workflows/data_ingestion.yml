@@ -249,8 +249,8 @@ jobs:
                           else:
                               mitigated_data.to_csv(mitigated_local_path, index=False)
                           
-                          # Upload to GCS with same filename in data/bias directory
-                          bias_blob_path = f"data/bias/{filename}"
+                          # Upload to GCS with same filename in data/raw directory
+                          bias_blob_path = f"data/raw/{filename}"
                           bias_blob = bucket.blob(bias_blob_path)
                           bias_blob.upload_from_filename(mitigated_local_path)
                           
