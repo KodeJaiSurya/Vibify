@@ -68,16 +68,30 @@ jobs:
 
       # Train model
       - name: Run model training script
+        id: model_training
         run: |
           export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
           python pipelines/dags/src/emotion_model_pipeline.py 
 
-      - name: Send Slack notification (success)
+      # Slack notification for model training success
+      - name: Send Slack notification (model training success)
+        if: steps.model_training.outcome == 'success'
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training completed successfully!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      # Slack notification for model training failure
+      - name: Send Slack notification (model training failure)
+        if: steps.model_training.outcome == 'failure'
+        run: |
+          curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+      
+      # Slack notifications for pipeline success or failure
+      - name: Send Slack notification (build success)
         if: success()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"Build succeeded!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
 
-      - name: Send Slack notification (failure)
+      - name: Send Slack notification (build failure)
         if: failure()
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"Build failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
