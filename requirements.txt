@@ -6,3 +6,4 @@ numpy==1.26.4
 python-dateutil==2.9.0.post0
 gdown==5.2.0
 dvc==3.56.0
+opendatasets

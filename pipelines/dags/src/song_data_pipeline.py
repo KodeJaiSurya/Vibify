@@ -1,7 +1,7 @@
 import pandas as pd
-import gdown
 from sklearn.preprocessing import StandardScaler
 import os
+import opendatasets as od
 import logging
 
 logger = logging.getLogger(__name__)
@@ -19,14 +19,14 @@ console_handler.setFormatter(formatter)
 if not logger.handlers:
     logger.addHandler(console_handler)
 
-def load_song_data(file_id: str) -> pd.DataFrame:
-    """Downloads dataset from Google Drive"""
-    url = f"https://drive.google.com/uc?id={file_id}"
-    file_path = "dags/data/raw/song_dataset.csv"
+def load_song_data() -> pd.DataFrame:
+    """Downloads dataset from Kaggle"""
+    url = f"https://www.kaggle.com/datasets/mrmorj/dataset-of-songs-in-spotify/data?select=genres_v2.csv"
+    file_path = "pipelines/dags/data/raw/song_dataset.csv"
     
     logger.info("Starting download of song dataset")
     try:
-        gdown.download(url, file_path, quiet=False)
+        od.download_kaggle_dataset(url, file_path)
         print(file_path)
         df = pd.read_csv(file_path)
         logger.info("Data loaded successfully.")
@@ -76,5 +76,4 @@ def save_features(df: pd.DataFrame, output_dir: str = "dags/data/preprocessed") 
     logger.info(f"Preprocessed song data saved to {output_path}")
 
 if __name__ == "__main__":
-    file_id  = "1zckGHmd_tJfyMqePfol0L-lIScstOCh9"
-    load_song_data(file_id)
+    load_song_data()
