@@ -10,7 +10,7 @@ conf.set('core', 'enable_xcom_pickling', 'True')
 
 default_args = {
     'owner': 'Team_Vibe',
-    'start_date': datetime(2024, 11, 2),
+    'start_date': datetime(2024, 11, 15),
     'retries': 0, # Number of retries in case of task failure
     'retry_delay': timedelta(minutes=5), # Delay before retries
 }
@@ -28,7 +28,6 @@ load_song_data_task = PythonOperator(
     task_id='load_song_data_task',
     python_callable=load_song_data,
     dag=dag,
-    op_args=["1zckGHmd_tJfyMqePfol0L-lIScstOCh9"],
 )
 
 clean_song_data_task = PythonOperator(
@@ -57,8 +56,7 @@ download_emotion_data_task = PythonOperator(
     task_id='download_emotion_data_task',
     python_callable=download_emotion_data,
     dag=dag,
-    op_args=["1-mzGbBpQxlgSowPHetsofCFjdIoxGNNc"],
-)
+    )
 
 process_emotion_data_task = PythonOperator(
     task_id='process_emotion_data_task',
