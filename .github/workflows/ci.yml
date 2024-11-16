@@ -84,6 +84,18 @@ jobs:
         if: steps.model_training.outcome == 'failure'
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
+
+      # Running model validation
+      - name: Run model validation
+        run: |
+          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH
+          VALIDATION_RESULT=$(python pipelines/dags/src/validation/modelValidation.py)
+          if [ "$VALIDATION_RESULT" -eq 0 ]; then
+            echo "Validation failed. Exiting..."
+            exit 1
+          else
+            echo "Validation passed."
+          fi
       
       # Slack notifications for pipeline success or failure
       - name: Send Slack notification (build success)
@@ -96,7 +108,7 @@ jobs:
         run: |
           curl -X POST -H 'Content-type: application/json' --data '{"text":"Build failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
 
-  # # Model Training and Validation Job
+  # # Model Training and Validation Job seperate job
   # model_training:
   #   runs-on: ubuntu-latest
   #   needs: build  # Ensures that build job completes successfully first
