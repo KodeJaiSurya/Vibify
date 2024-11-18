@@ -30,7 +30,7 @@ load_song_data_task = PythonOperator(
     task_id='load_song_data_task',
     python_callable=load_song_data,
     dag=dag,
-    op_args=[bucket_name, 'data/raw/spotify/genres_v2.csv'],
+    op_args=[BUCKET_NAME, 'data/raw/spotify/genres_v2.csv'],
 )
 
 clean_song_data_task = PythonOperator(
@@ -51,7 +51,7 @@ save_song_data_task = PythonOperator(
     task_id='save_song_data_task',
     python_callable=save_features,
     dag=dag,
-    op_args=[scale_song_data_task.output, bucket_name, 'data/preprocessed/spotify/genres_v2.csv'],
+    op_args=[scale_song_data_task.output, BUCKET_NAME, 'data/preprocessed/spotify/genres_v2.csv'],
 )
 
 def get_chunk_paths(**context):
