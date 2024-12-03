@@ -1,12 +1,14 @@
 from airflow import DAG
+import os
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
-from src.emotion_data_pipeline import download_emotion_data, process_emotion_data, aggregate_filtered_data
+from src.emotion_data_pipeline import init_gcs_handler, process_emotion_data, aggregate_emotion_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
+os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = "./config/vibe-team-86db5da891f4.json"
 
 default_args = {
     'owner': 'Team_Vibe',
@@ -28,6 +30,7 @@ load_song_data_task = PythonOperator(
     task_id='load_song_data_task',
     python_callable=load_song_data,
     dag=dag,
+    op_args=[BUCKET_NAME, 'data/raw/spotify/genres_v2.csv'],
 )
 
 clean_song_data_task = PythonOperator(
@@ -48,33 +51,41 @@ save_song_data_task = PythonOperator(
     task_id='save_song_data_task',
     python_callable=save_features,
     dag=dag,
-    op_args=[scale_song_data_task.output],
+    op_args=[scale_song_data_task.output, BUCKET_NAME, 'data/preprocessed/spotify/genres_v2.csv'],
 )
 
-# Pipeline for emotions with chunking
-download_emotion_data_task = PythonOperator(
-    task_id='download_emotion_data_task',
-    python_callable=download_emotion_data,
+def get_chunk_paths(**context):
+    """Helper function to get chunk paths from XCom"""
+    task_instance = context['task_instance']
+    chunk_paths = task_instance.xcom_pull(task_ids='process_emotion_data_task')
+    return chunk_paths
+
+# Emotion Pipeline tasks
+load_emotion_data_task = PythonOperator(
+    task_id='load_emotion_data_task',
+    python_callable=init_gcs_handler,
     dag=dag,
-    )
+    provide_context=True,
+)
 
 process_emotion_data_task = PythonOperator(
     task_id='process_emotion_data_task',
     python_callable=process_emotion_data,
     dag=dag,
-    op_args=[download_emotion_data_task.output, 1000],
+    provide_context=True,
 )
 
-aggregate_filtered_data_task = PythonOperator(
-    task_id="aggregate_filtered_data_task",
-    python_callable=aggregate_filtered_data,
-    op_args=[process_emotion_data_task.output],
-    dag=dag
+aggregate_emotion_data_task = PythonOperator(
+    task_id='aggregate_emotion_data_task',
+    python_callable=aggregate_emotion_data,
+    dag=dag,
+    provide_context=True,
+    op_args=[get_chunk_paths],  # Pass the function to get chunk paths
 )
 
-#setting task dependencies
+# Set task dependencies
 load_song_data_task >> clean_song_data_task >> scale_song_data_task >> save_song_data_task
-download_emotion_data_task >> process_emotion_data_task >> aggregate_filtered_data_task
+load_emotion_data_task >> process_emotion_data_task >> aggregate_emotion_data_task
 
 if __name__ =='__main__':
     dag.cli()

@@ -1,60 +1,62 @@
-from pathlib import Path
-from typing import List, Tuple
 import logging
+from .emotion_gcs_handler import GCSHandler
+from .emotion_data_processor import DataProcessor
+from .emotion_data_aggregator import DataAggregator
 
-from pipelines.dags.src.emotion_data_downloader import DataDownloader
-from pipelines.dags.src.emotion_data_processor import DataProcessor
-from pipelines.dags.src.emotion_data_aggregator import DataAggregator
-
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
-
-console_handler = logging.StreamHandler()
-console_handler.setLevel(logging.DEBUG)
-
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-console_handler.setFormatter(formatter)
-
-if not logger.handlers:
-    logger.addHandler(console_handler)
-
-def download_emotion_data() -> str:
-    """Task to download emotion data"""
-    logger.info("Starting download task for emotion data")
-    downloader = DataDownloader()
+def init_gcs_handler() -> dict:
+    """Initialize GCS handler and verify connection"""
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+    
+    if not logger.handlers:
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.DEBUG)
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        console_handler.setFormatter(formatter)
+        logger.addHandler(console_handler)
+    
     try:
-        file_path = downloader.download_from_kaggle()
-        logger.info("Emotion data downloaded successfully.")
-        return file_path
+        logger.info("Initializing GCS handler")
+        GCSHandler()
+        return {"status": "success"}
     except Exception as e:
-        logger.error(f"Error in download_emotion_data: {e}")
+        logger.error(f"GCS handler initialization error: {e}")
         raise
 
-def process_emotion_data(file_path: str, chunk_size: int = 1000) -> List[Tuple[Path, Path]]:
-    """Task to process emotion data in chunks"""
-    logger.info("Starting processing task for emotion data")
-    processor = DataProcessor(chunk_size=chunk_size)
+def process_emotion_data(**context) -> list:
+    """Process emotion data chunks"""
+    logger = logging.getLogger(__name__)
+    
     try:
-        chunk_paths = processor.process_all_chunks(file_path)
-        logger.info("Emotion data processed into chunks successfully.")
+        logger.info("Starting processing task")
+        gcs_handler = GCSHandler()
+        processor = DataProcessor(gcs_handler)
+        chunk_paths = processor.process_all_chunks("data/raw/facial_expression/fer2013.csv")
+        logger.info(f"Generated chunk paths: {chunk_paths}")
         return chunk_paths
     except Exception as e:
-        logger.error(f"Error in process_emotion_data: {e}")
+        logger.error(f"Data processing error: {e}")
         raise
 
-def aggregate_filtered_data(chunk_paths: List[Tuple[Path, Path]]) -> bool:
-    """Task to combine chunks and save final data"""
-    logger.info("Starting aggregation task for emotion data")
-    aggregator = DataAggregator()
+def aggregate_emotion_data(chunk_paths_func, **context) -> bool:
+    """Aggregate processed emotion data"""
+    logger = logging.getLogger(__name__)
+    
     try:
+        logger.info("Starting aggregation task")
+        # Get chunk paths using the provided function
+        chunk_paths = chunk_paths_func(**context)
+        logger.info(f"Retrieved chunk paths: {chunk_paths}")
+        
+        gcs_handler = GCSHandler()
+        aggregator = DataAggregator(gcs_handler)
         X, y = aggregator.combine_chunks(chunk_paths)
         success = aggregator.save_final(X, y)
-        aggregator.cleanup_chunks(chunk_paths)
+        
         if success:
-            logger.info("Emotion data aggregation and saving completed successfully.")
-        else:
-            logger.warning("Emotion data aggregation completed but saving failed.")
+            aggregator.cleanup_chunks(chunk_paths)
+            logger.info("Aggregation completed successfully")
         return success
     except Exception as e:
-        logger.error(f"Error in aggregate_filtered_data: {e}")
+        logger.error(f"Data aggregation error: {e}")
         raise
