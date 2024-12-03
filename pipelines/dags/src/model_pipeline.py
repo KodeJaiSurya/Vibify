@@ -87,7 +87,7 @@ def main():
     # Configuration
     PROJECT_ID = "vibe-team"
     LOCATION = "us-east1"
-    BUCKET_NAME = " us-east1-vibeoncloud-89c595e0-bucket "
+    BUCKET_NAME = BUCKET_NAME
     
     # Initialize Vertex AI
     init_vertex_ai(PROJECT_ID, LOCATION)
