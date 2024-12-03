@@ -59,6 +59,7 @@ This project uses `Python == 3.11`. Please ensure that the correct version is in
 1. git
 2. python==3.11
 3. docker daemon/desktop is running
+4. Google Cloud Platform account with Vertex AI access
 
 ## User Installation
 
@@ -145,6 +146,8 @@ docker compose down
   The data version control is hosted on GCP. GCP helps to host large datasets and multiple people can access the data at once. It can be easily integrated with airflow.
 - TensorFlow
   We use Tensorflow to validate the data schema and find any anomalies in the data.
+- MLFlow
+  We use MLflow for managing models for Staging and Production as it allows us to reuse the models from artifacts registry and serve it.
 
 ## Data Preprocessing
 
@@ -166,7 +169,7 @@ docker compose down
 4. **Feature Scaling**: Numerical features scaled using StandardScaler.
 5. **Data Storage**: Preprocessed data saved as a CSV file.
 
-## Test Modules
+### Test Modules
 
 - Unit tests implemented using the "unittest" framework.
 - Tests cover various scenarios, including edge cases.
@@ -183,7 +186,7 @@ The data pipeline is modularized and coordinated using Apache Airflow. Key compo
 - `emotion_data_pipeline.py`: Coordinates the complete emotion data workflow.
 - `song_data_pipeline.py`: Handles end-to-end song data processing.
 
-## Data Version Control (DVC)
+### Data Version Control (DVC)
 
 DVC is used for data management and versioning:
 
@@ -192,26 +195,138 @@ DVC is used for data management and versioning:
 3. **Pull and Push DVC Data**: Latest data pulled from remote, new data added and pushed.
 4. **Commit DVC Changes**: DVC metadata committed to Git repository.
 
-## Logging
+### Logging
 
 Logging is implemented modularly in all data pipeline DAG functions, providing actionable messages for debugging and monitoring.
 
-## Data Schema and Statistics
+### Data Schema and Statistics
 
 - TFDV used to generate statistics and infer schema for datasets.
 - Statistics provide quantitative overview of data.
 - Schema defines structure, types, and constraints for data features.
 
-## Anomaly Detection & Alerts
+### Anomaly Detection & Alerts
 
 - Anomalies detected using TFDV's `validate_statistics` against inferred schema.
 - Visualization of anomalies provided by `tfdv.display_anomalies`.
 - Custom `anomalies_info()` function implemented for alerts and error throwing.
 
-## Pipeline Flow Optimization
+### Pipeline Flow Optimization
 
 - Initial execution time of 5 minutes reduced to 50 seconds.
 - Optimization achieved through:
   - Parallel processing of independent pipeline parts.
   - Implementation of chunking strategy for larger dataset.
   - Improved failure handling and resource utilization.
+
+## Model Pipeline Development
+We have implemented our machine learning pipeline on Google Cloud Platform (GCP). We added our codebase, and we built images using Docker. Subsequently, we pushed the Docker images to the Artifact Registry. We then trained and served our model using Vertex AI.
+
+- `emotion_model_pipeline.py`: Handles facial emotion model creation and training, including data loading, CNN architecture definition, model compilation, and training workflow.
+
+- `song_model_pipeline.py`: Implements song mood clustering using PCA and KMeans, with functions for dimensionality reduction, cluster visualization, and mood assignment.
+
+- `train.py`: Coordinates the complete model training workflow, managing both emotion and song models, including GCS data transfer, model saving, and result uploading.
+
+### Overview
+The model pipeline is built on Google Cloud Platform's Vertex AI and handles two main components:
+- **Emotion Detection Model**: Processes facial expressions in real-time
+- **Song Clustering**: Categorizes songs based on emotional attributes
+
+### Architecture Components
+- **Training Pipeline**: Manages model training on Vertex AI with MLflow tracking
+- **Data Pipeline**: Handles data preprocessing and validation
+- **CI/CD Pipeline**: Automates testing, deployment, and monitoring
+- **Monitoring System**: Tracks model performance and triggers alerts
+
+### CI/CD Setup
+1. Automated Testing
+   - Unit tests for model components
+   - Integration tests for pipeline
+
+2. Deployment Pipeline
+   - Model validation checks
+   - Automated rollback capability
+
+3. Monitoring and Alerts
+   - Performance metric tracking
+   - Drift detection
+   - Slack notifications for pipeline events
+
+### Building and Pushing Docker Images
+
+The following commands are used to build and push the emotion model training image to Google Container Registry (GCR).
+
+### Prerequisites
+Before running the build and push commands, ensure you have:
+- Docker installed and running
+- Google Cloud SDK configured
+- Authentication configured for Google Container Registry
+
+### Authentication Setup
+```bash
+gcloud config set project PROJECTID
+
+gcloud auth configure-docker gcr.io
+```
+
+### Build and Push Commands
+```bash
+docker build -t gcr.io/PROJECT_ID/emotion-training:latest .
+
+docker push gcr.io/PROJECT_ID/emotion-training:latest
+```
+
+### Model Monitoring
+
+#### Metrics Tracked
+- Model performance metrics
+- Resource utilization
+- Prediction latency
+- Data drift indicators
+
+#### Alert Channels
+- Slack notifications from Github Actions
+- Email alerts from Vertex AI
+### DVC
+
+Steps to initialize and track files using DVC
+
+1. Initialize dvc in the parent directory of your local repository.
+    ```python
+    dvc remote add -d temp /tmp/dvcstore
+    ```
+2. Set up remote bucket.
+    ```python
+    dvc remote add -d temp /tmp/dvcstore
+    ```
+3. Add the location as default to your remote bucket.
+    ```python
+    dvc remote add -d myremote gs://<mybucket>/<path>
+    ```
+4. Don't forget to modify your credentials.
+    ```python
+    dvc remote modify --lab2 credentialpath <YOUR JSON TOKEN>```
+
+### MLFlow
+
+Most important declarations in the code:
+1. Set your tracking uri for MLFlow.
+    ```python
+    mlflow.set_tracking_uri("http://127.0.0.1:5001")
+    ```
+2. Setting the base level for logging; only warnings and above (error,critical) shall be logged.
+    ```python
+    logging.basicConfig(level=logging.WARN)
+    ```
+
+3. Set up the logger.
+    ```python
+    logger = logging.getLogger(__name__)
+    ```
+
+4. Additionally, you may or may not choose to ignore warnings.
+    ```python
+    warnings.filterwarnings("ignore")
+    ```
+<hr>
