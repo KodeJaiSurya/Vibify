@@ -59,7 +59,7 @@ jobs:
       run: python pipelines/dags/src/gcs_init.py ${{ env.GCS_BUCKET }}
   
     - name: Sync src directory to GCS
-      run: python pipelines/dags/src/gcs_sync_src.py ${{ env.GCS_BUCKET }} pipelines/dags/src
+      run: python pipelines/dags/src/gcs_sync.py ${{ env.GCS_BUCKET }} pipelines/dags/src
 
     - name: Download Dataset
       run: |
