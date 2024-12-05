@@ -58,9 +58,9 @@ def initialize_bucket_structure(bucket_name: str, src_dir: str = 'src'):
         required_folders = [
             'models/',
             'data/preprocessed/spotify/',
-            'data/preprocessed/emotions/',
+            'data/preprocessed/facial_expression/',
             'data/raw/spotify/',
-            'data/raw/emotions/',
+            'data/raw/facial_expression/',
             'src/'
         ]
         
