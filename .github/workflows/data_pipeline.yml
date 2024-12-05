@@ -33,7 +33,7 @@ jobs:
           credentials_json: ${{ secrets.GCP_KEY }}
 
       - name: Setup Cloud Composer Environment
-        run: python src/setup_composer.py
+        run: python pipelines/dags/src/setup_composer.py
 
       - name: Deploy DAG to Cloud Composer
-        run: python src/deploy_dag.py
+        run: python pipelines/dags/src/deploy_dag.py
