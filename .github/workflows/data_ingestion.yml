@@ -54,8 +54,12 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_KEY }}
 
-    - name: Initialize GCS folders and upload src files
+    
+    - name: Initialize GCS folders
       run: python pipelines/dags/src/gcs_init.py ${{ env.GCS_BUCKET }}
+  
+    - name: Sync src directory to GCS
+      run: python pipelines/dags/src/gcs_sync_src.py ${{ env.GCS_BUCKET }} pipelines/dags/src
 
     - name: Download Dataset
       run: |
