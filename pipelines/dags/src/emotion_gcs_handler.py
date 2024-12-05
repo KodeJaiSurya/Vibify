@@ -2,11 +2,12 @@ from google.cloud import storage
 from pathlib import Path
 import logging
 import tempfile
+from airflow.models import Variable
 
 class GCSHandler:
     """Handles all Google Cloud Storage operations"""
     
-    def __init__(self, bucket_name: str = BUCKET_NAME):
+    def __init__(self, bucket_name: str = Variable.get("GCS_BUCKET_NAME")):
         self.bucket_name = bucket_name
         self.client = storage.Client()
         self.bucket = self.client.bucket(bucket_name)
