@@ -7,7 +7,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   COMPOSER_ENVIRONMENT: "data-pipeline"
   COMPOSER_LOCATION: "us-east1"
-  COMPOSER_IMAGE_VERSION: "composer-2.5.3-airflow-2.5.3"
+  COMPOSER_IMAGE_VERSION: "composer-3-airflow-2.10.2-build.0"
   GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
 
 jobs:
@@ -26,6 +26,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install google-cloud-storage
+          pip install -r requirements.txt
 
       - name: Configure GCP credentials
         uses: google-github-actions/auth@v1
