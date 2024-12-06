@@ -5,36 +5,76 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  COMPOSER_ENVIRONMENT: "data-pipeline"
-  COMPOSER_LOCATION: "us-east1"
-  COMPOSER_IMAGE_VERSION: "composer-3-airflow-2.10.2-build.0"
-  GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+  LOCATION: "us-east1"
+  ENVIRONMENT_NAME: "data-pipeline"
 
 jobs:
-  setup-and-run-composer:
+  deploy-and-run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
+      - name: Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
         with:
-          python-version: "3.11"
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_KEY }}
+          export_default_credentials: true
 
-      - name: Install dependencies
+      - name: Enable required APIs
         run: |
-          python -m pip install --upgrade pip
-          pip install google-cloud-storage
-          pip install -r requirements.txt
+          gcloud services enable composer.googleapis.com
+          gcloud services enable artifactregistry.googleapis.com
 
-      - name: Configure GCP credentials
-        uses: google-github-actions/auth@v1
-        with:
-          credentials_json: ${{ secrets.GCP_KEY }}
+      - name: Check if environment exists
+        id: check-env
+        continue-on-error: true
+        run: |
+          gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }}
 
-      - name: Setup Cloud Composer Environment
-        run: python pipelines/dags/src/setup_composer.py
+      - name: Create Cloud Composer Environment
+        if: steps.check-env.outcome == 'failure'
+        run: |
+          gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --image-version=composer-2.5.3-airflow-2.5.3 \
+            --python-version=3
 
-      - name: Deploy DAG to Cloud Composer
-        run: python pipelines/dags/src/deploy_dag.py
+      - name: Wait for environment readiness
+        if: steps.check-env.outcome == 'failure'
+        run: |
+          echo "Waiting for environment to be ready..."
+          while [[ $(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --format="get(state)") != "RUNNING" ]]; do
+            sleep 60
+          done
+
+      - name: Get Composer GCS bucket
+        id: get-bucket
+        run: |
+          DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
+          echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
+
+      - name: Clear existing DAGs
+        run: |
+          gsutil -m rm -rf ${{ env.DAGS_BUCKET }}/dags/* || true
+
+      - name: Copy DAGs folder to GCS
+        run: |
+          gsutil -m cp -r pipelines/dags/* ${{ env.DAGS_BUCKET }}/dags/
+
+      - name: List uploaded DAGs
+        run: |
+          echo "Listing contents of DAGs folder in GCS:"
+          gsutil ls -r ${{ env.DAGS_BUCKET }}/dags/
+
+      - name: Trigger DAG
+        run: |
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            dags trigger -- data_pipeline
