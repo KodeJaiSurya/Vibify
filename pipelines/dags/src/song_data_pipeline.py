@@ -75,6 +75,21 @@ def scale_features(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Feature scaling completed")
     return scaled_df
 
+def scale_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Scales numerical features in the dataframe and retains non-numerical features."""
+    logger.info("Starting feature scaling")
+    # Separate numerical and non-numerical features
+    numerical_features = df.select_dtypes(include=['float64', 'int64']).columns
+    non_numerical_features = df.select_dtypes(exclude=['float64', 'int64']).columns
+    # Scale numerical features
+    scaler = StandardScaler()
+    scaled_numerical_data = scaler.fit_transform(df[numerical_features])
+    scaled_numerical_df = pd.DataFrame(scaled_numerical_data, columns=numerical_features, index=df.index)
+    # Concatenate scaled numerical features with non-numerical features
+    final_df = pd.concat([scaled_numerical_df, df[non_numerical_features]], axis=1)
+    logger.info("Feature scaling completed")
+    return final_df
+
 def save_features(df: pd.DataFrame, bucket_name: str, blob_name: str) -> None:
     """
     Saves the preprocessed dataframe to GCS
