@@ -59,7 +59,8 @@ jobs:
             --worker-memory=1 \
             --worker-storage=1 \
             --min-workers=1 \
-            --max-workers=3 \
+            --max-workers=3 
+        # --storage-bucket vibify-bucket
 
       - name: Install Python Dependencies
         run: |
