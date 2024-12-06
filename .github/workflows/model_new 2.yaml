@@ -73,17 +73,18 @@ jobs:
               }
           ]
 
-          custom_job_spec = aiplatform.CustomJobSpec(
+          custom_job = aiplatform.CustomJob(
+              display_name="emotion-training-job",
               worker_pool_specs=worker_pool_specs
           )
 
           hyperparameter_tuning_job = aiplatform.HyperparameterTuningJob(
               display_name="emotion-training-hyperparameter-tuning",
-              custom_job_spec=custom_job_spec,
+              custom_job=custom_job,
               metric_spec={"accuracy": "maximize"},
               parameter_spec={
-                  "learning_rate": aiplatform.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
-                  "num_layers": aiplatform.IntegerParameterSpec(min=1, max=5, scale="linear")
+                  "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
+                  "num_layers": aiplatform.hyperparameter_tuning.IntegerParameterSpec(min=1, max=5, scale="linear")
               },
               max_trial_count=5,
               parallel_trial_count=2
