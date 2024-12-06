@@ -27,40 +27,40 @@ jobs:
         with:
           project_id: ${{ secrets.GCP_PROJECT_ID }}
 
+      - name: Configure gcloud project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
       - name: Enable required APIs
         run: |
           gcloud services enable composer.googleapis.com
           gcloud services enable artifactregistry.googleapis.com
 
-      - name: Check if environment exists
-        id: check-env
-        continue-on-error: true
-        run: |
-          gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }}
-
       - name: Create Cloud Composer Environment
-        if: steps.check-env.outcome == 'failure'
         run: |
           gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --image-version=composer-3-airflow-2.10.2-build.0
-
-      - name: Wait for environment readiness
-        if: steps.check-env.outcome == 'failure'
-        run: |
-          echo "Waiting for environment to be ready..."
-          while [[ $(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --format="get(state)") != "RUNNING" ]]; do
-            sleep 60
-          done
+            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --image-version=composer-3-airflow-2.10.2-build.0 \
+            --environment-size=small \
+            --scheduler-cpu=0.5 \
+            --scheduler-memory=1 \
+            --scheduler-storage=1 \
+            --web-server-cpu=0.5 \
+            --web-server-memory=1 \
+            --web-server-storage=1 \
+            --worker-cpu=0.5 \
+            --worker-memory=1 \
+            --worker-storage=1 \
+            --min-workers=1 \
+            --max-workers=3
 
       - name: Get Composer GCS bucket
         id: get-bucket
         run: |
           DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
           echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
 
@@ -81,4 +81,5 @@ jobs:
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
+            --project=${{ secrets.GCP_PROJECT_ID }} \
             dags trigger -- data_pipeline
