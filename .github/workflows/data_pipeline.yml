@@ -7,7 +7,6 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   LOCATION: "us-east1"
   ENVIRONMENT_NAME: "data-pipeline"
-  PYTHON_PACKAGES: "scikit-learn==1.5.2 opendatasets==0.1.22"
 
 jobs:
   deploy-and-run:
@@ -36,10 +35,6 @@ jobs:
         run: |
           gcloud services enable composer.googleapis.com
           gcloud services enable artifactregistry.googleapis.com
-
-      - name: Create requirements.txt
-        run: |
-          echo "${{ env.PYTHON_PACKAGES }}" > requirements.txt
 
       - name: Check/Create Cloud Composer Environment
         run: |
@@ -71,7 +66,7 @@ jobs:
           gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
           --location=${{ env.LOCATION }} \
           --project=vibify-demo \
-          --update-pypi-packages-from-file requirements.txt
+          --update-pypi-packages-from-file pipelines/dags/requirements.txt
 
       - name: Get Composer GCS bucket
         id: get-bucket
