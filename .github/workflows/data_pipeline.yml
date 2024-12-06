@@ -41,7 +41,7 @@ jobs:
           gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            --image-version=composer-3-airflow-2.10.2-build.0 \
+            --image-version=composer-3-airflow-2.9.3-build.7 \
             --service-account=vibebot@vibify-demo.iam.gserviceaccount.com \
             --environment-size=small \
             --scheduler-cpu=0.5 \
