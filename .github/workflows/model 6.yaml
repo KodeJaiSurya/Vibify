@@ -61,10 +61,21 @@ jobs:
 
           aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}')
 
-          job = aiplatform.CustomJob.from_container_image(
+          worker_pool_specs = [
+              {
+                  "machine_spec": {
+                      "machine_type": "n1-standard-4"
+                  },
+                  "replica_count": 1,
+                  "container_spec": {
+                      "image_uri": "${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+                  }
+              }
+          ]
+
+          job = aiplatform.CustomJob(
               display_name="emotion-training-job",
-              container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
-              machine_type="n1-standard-4",
+              worker_pool_specs=worker_pool_specs
           )
 
           job.run(sync=True)
