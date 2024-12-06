@@ -6,6 +6,7 @@ from pandas.testing import assert_frame_equal
 from sklearn.preprocessing import StandardScaler
 import numpy as np
 import pandas as pd
+import logging
 from unittest.mock import MagicMock
 import os
 import sys
@@ -19,29 +20,45 @@ from pipelines.dags.src.song_data_pipeline import save_features, load_song_data,
 
 class TestLoadSongData(unittest.TestCase):
 
-    @patch("gdown.download")
-    @patch("pandas.read_csv")
-    def test_success(self, mock_read_csv, mock_gdown):
-        """Testing for valid file"""
-        mock_gdown.return_value = "dags/data/raw/song_dataset.csv"
-        sample_data = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
-        mock_read_csv.return_value = sample_data
-        file_id = "valid_file_id"
-        result = load_song_data(file_id)
-        mock_gdown.assert_called_once_with(f"https://drive.google.com/uc?id={file_id}", "dags/data/raw/song_dataset.csv", quiet=False)
-        self.assertTrue(result.equals(sample_data))
+    @patch("google.cloud.storage.Client")
+    def test_success(self, mock_storage_client):
+        """Test successful data loading from GCS"""
+        # Mocking GCS client and blob behavior
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_blob.download_as_string.return_value = b"col1,col2\n1,3\n2,4"
+        mock_bucket.blob.return_value = mock_blob
+        mock_storage_client.return_value.get_bucket.return_value = mock_bucket
+        bucket_name = "test_bucket"
+        blob_name = "test_blob.csv"
+        result = load_song_data(bucket_name, blob_name)
+        expected_df = pd.DataFrame({"col1": [1, 2], "col2": [3, 4]})
+        pd.testing.assert_frame_equal(result, expected_df)
+        mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
+        mock_bucket.blob.assert_called_once_with(blob_name)
 
-    @patch("gdown.download", side_effect=FileNotFoundError)
-    def test_file_not_found(self, mock_gdown):
-        """Test for invalid file"""
-        file_id = "invalid_file_id"
-        result = load_song_data(file_id)
+    @patch("google.cloud.storage.Client")
+    def test_file_not_found(self, mock_storage_client):
+        """Test file not found on GCS"""
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_blob.download_as_string.side_effect = FileNotFoundError("File not found")
+        mock_bucket.blob.return_value = mock_blob
+        mock_storage_client.return_value.get_bucket.return_value = mock_bucket
+        bucket_name = "test_bucket"
+        blob_name = "nonexistent_blob.csv"
+        result = load_song_data(bucket_name, blob_name)
+        # Asserting results
         self.assertIsNone(result)
+        mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
+        mock_bucket.blob.assert_called_once_with(blob_name)
 
-    def test_missing_argument(self):
-      """Test for missing required argument, fileID"""
-      with self.assertRaises(TypeError):
-        load_song_data()
+    @patch("google.cloud.storage.Client")
+    def test_missing_argument(self, mock_storage_client):
+        """Test for missing required arguments"""
+        with self.assertRaises(TypeError):
+            load_song_data()  # No arguments provided to test this
+
 
 class TestDataCleaning(unittest.TestCase):
     def test_missing_values(self):
@@ -203,10 +220,11 @@ class TestScaleFeatures(unittest.TestCase):
             'feature2': [4, 5, 6],
             'non_numeric': ['a', 'b', 'c']
         })
-        scaled_df = scale_features(df)
+        scaled_df = scale_features(df)        
         scaler = StandardScaler()
-        expected_data = scaler.fit_transform(df[['feature1', 'feature2']])
+        expected_data = scaler.fit_transform(df[['feature1', 'feature2']])        
         expected_df = pd.DataFrame(expected_data, columns=['feature1', 'feature2'])
+        expected_df['non_numeric'] = df['non_numeric'] 
         assert_frame_equal(scaled_df, expected_df)
 
     def test_empty_dataframe(self):
@@ -224,33 +242,53 @@ class TestScaleFeatures(unittest.TestCase):
 
 class TestSaveFeatures(unittest.TestCase):
     
-    @patch("os.makedirs")
-    @patch("pandas.DataFrame.to_csv")
-    def test_successful_save(self, mock_to_csv, mock_makedirs):
-        """Test saving features successfully"""
-        # Mock inputs
+    @patch("google.cloud.storage.Client")
+    def test_successful_save(self, mock_storage_client):
+        """Test saving features successfully to GCS"""
+        # Mocking GCS client and blob behavior
+        mock_bucket = MagicMock()
+        mock_blob = MagicMock()
+        mock_storage_client.return_value.get_bucket.return_value = mock_bucket
+        mock_bucket.blob.return_value = mock_blob
+        # Mock DataFrame to CSV conversion
         df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
-        output_dir = "test_data/preprocessed"
-        save_features(df, output_dir)
-        mock_makedirs.assert_called_once_with(output_dir, exist_ok=True)
-        output_path = os.path.join(output_dir, "preprocessed_features.csv")
-        mock_to_csv.assert_called_once_with(output_path, index=False)
-    
-    @patch("os.makedirs", side_effect=PermissionError)
-    def test_permission_error(self, mock_makedirs):
-        """Test handling of PermissionError when creating directories"""
-        df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
-        with self.assertRaises(PermissionError):
-            save_features(df, "restricted_dir")
+        bucket_name = "test_bucket"
+        blob_name = "test_blob.csv"
+        save_features(df, bucket_name, blob_name)
+        mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
+        mock_bucket.blob.assert_called_once_with(blob_name)
+        mock_blob.upload_from_string.assert_called_once()
 
-    @patch("os.makedirs")
-    @patch("pandas.DataFrame.to_csv", side_effect=Exception("Save failed"))
-    def test_csv_exception(self, mock_to_csv, mock_makedirs):
-        """Test handling of exception when saving the dataframe"""
-        df = pd.DataFrame({"col1": [1, 2, 3], "col2": [4, 5, 6]})
-        with self.assertRaises(Exception) as context:
-            save_features(df, "test_data/preprocessed")
-        self.assertEqual(str(context.exception), "Save failed")
+    @patch('google.cloud.storage.Client')
+    @patch('pipelines.dags.src.song_data_pipeline.logger')
+    def test_save_features_exception(self, mock_logger, mock_storage_client):
+        df = pd.DataFrame({'column1': [1, 2, 3], 'column2': ['a', 'b', 'c']})
+        # Simulating an exception when getting the bucket
+        mock_gcs_client = MagicMock()
+        mock_storage_client.return_value = mock_gcs_client
+        mock_gcs_client.get_bucket.side_effect = Exception("Bucket not found")
+        # Running the function and assert it logs the error
+        save_features(df, 'test-bucket', 'test-path')
+        # Checking that the logger called error to indicate failure
+        mock_logger.error.assert_called_once_with('Error saving data to GCS: Bucket not found')
+    
+    @patch('google.cloud.storage.Client')
+    @patch('pipelines.dags.src.song_data_pipeline.logger')
+    def test_save_features_empty_dataframe(self, mock_logger, mock_storage_client):
+        df = pd.DataFrame()
+        # Mock GCS storage client and bucket
+        mock_gcs_client = MagicMock()
+        mock_storage_client.return_value = mock_gcs_client
+        mock_bucket = MagicMock()
+        mock_gcs_client.get_bucket.return_value = mock_bucket
+        mock_blob = MagicMock()
+        mock_bucket.blob.return_value = mock_blob
+        save_features(df, 'test-bucket', 'test-path')
+        # Asserting that the GCS client methods were called even for empty DataFrame
+        mock_storage_client.assert_called_once()
+        mock_gcs_client.get_bucket.assert_called_once_with('test-bucket')
+        mock_bucket.blob.assert_called_once_with('test-path')
+        mock_blob.upload_from_string.assert_called_once()
 
 if __name__ == "__main__":
     unittest.main()
