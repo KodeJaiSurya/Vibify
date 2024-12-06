@@ -9,7 +9,7 @@ from src.song_data_pipeline import load_song_data, data_cleaning, scale_features
 from src.emotion_data_pipeline import init_gcs_handler, process_emotion_data, aggregate_emotion_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
-bucket_name = "us-central1-data-pipeline-bd05903a-bucket"
+bucket_name = Variable.get("BUCKET_NAME")
 
 default_args = {
     'owner': 'Team_Vibe',

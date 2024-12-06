@@ -78,6 +78,17 @@ jobs:
           echo "Listing contents of DAGs folder in GCS:"
           gsutil ls -r ${{ env.DAGS_BUCKET }}/dags/
 
+      - name: Set Airflow Variables
+        run: |
+          # Wait for environment to be ready (you might need to adjust the sleep time)
+          sleep 300
+          
+          # Set each variable in Airflow
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
+
       - name: Trigger DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
