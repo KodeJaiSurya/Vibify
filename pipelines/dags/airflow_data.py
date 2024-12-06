@@ -3,7 +3,7 @@ import os
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
-from airflow import Variable
+from airflow.models import Variable
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
 from src.emotion_data_pipeline import init_gcs_handler, process_emotion_data, aggregate_emotion_data
