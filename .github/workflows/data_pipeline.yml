@@ -5,8 +5,9 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  LOCATION: "us-east1"
+  LOCATION: "us-central1"
   ENVIRONMENT_NAME: "data-pipeline"
+  PYTHON_PACKAGES: "scikit-learn==1.5.2 opendatasets==0.1.22"
 
 jobs:
   deploy-and-run:
@@ -36,6 +37,10 @@ jobs:
           gcloud services enable composer.googleapis.com
           gcloud services enable artifactregistry.googleapis.com
 
+      - name: Create requirements.txt
+        run: |
+          echo "${{ env.PYTHON_PACKAGES }}" > requirements.txt
+
       - name: Create Cloud Composer Environment
         run: |
           gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
@@ -54,7 +59,14 @@ jobs:
             --worker-memory=1 \
             --worker-storage=1 \
             --min-workers=1 \
-            --max-workers=3
+            --max-workers=3 
+        # --storage-bucket vibify-bucket
+
+      - name: Install Python Dependencies
+        run: |
+          gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
+          --location=${{ env.LOCATION }} \
+          --update-pypi-packages-from-file requirements.txt
 
       - name: Get Composer GCS bucket
         id: get-bucket
@@ -78,9 +90,33 @@ jobs:
           echo "Listing contents of DAGs folder in GCS:"
           gsutil ls -r ${{ env.DAGS_BUCKET }}/dags/
 
+      - name: Set Airflow Variables
+        run: |
+          # Wait for environment to be ready
+          sleep 300
+          
+          # Set each variable in Airflow
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
+
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+
       - name: Trigger DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             dags trigger -- data_pipeline
+
+      - name: Delete Cloud Composer Environment
+        run: |
+          gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --quiet

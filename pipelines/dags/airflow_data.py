@@ -3,19 +3,41 @@ import os
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
-from airflow import Variable
+from airflow.models import Variable
+from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
 from src.emotion_data_pipeline import init_gcs_handler, process_emotion_data, aggregate_emotion_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
-bucket_name = Variable.get("GCS_BUCKET_NAME")
+bucket_name = Variable.get("BUCKET_NAME")
+
+def task_fail_slack_alert(context):
+    """
+    Callback function for sending Slack alerts on task failure
+    """
+    slack_msg = f"""
+        :red_circle: Task Failed
+        *DAG*: {context.get('task_instance').dag_id}
+        *Task*: {context.get('task_instance').task_id}
+        *Error*: {context.get('exception')}
+    """
+    
+    failed_alert = SlackWebhookOperator(
+        task_id='slack_notification',
+        webhook_token=Variable.get("SLACK_WEBHOOK_URL"),
+        message=slack_msg,
+        channel="#github_notifs"
+    )
+    
+    return failed_alert.execute(context=context)
 
 default_args = {
     'owner': 'Team_Vibe',
     'start_date': datetime(2024, 11, 15),
     'retries': 0, # Number of retries in case of task failure
     'retry_delay': timedelta(minutes=5), # Delay before retries
+    'on_failure_callback': task_fail_slack_alert
 }
 
 dag = DAG(
