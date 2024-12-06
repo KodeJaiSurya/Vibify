@@ -90,7 +90,7 @@ jobs:
           else
             echo "All required packages are already installed"
           fi
-          
+
       - name: Get Composer GCS bucket
         id: get-bucket
         run: |
@@ -128,7 +128,6 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
-
 
       - name: Trigger DAG
         run: |
