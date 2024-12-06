@@ -44,8 +44,7 @@ jobs:
         run: |
           gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --image-version=composer-2.5.3-airflow-2.5.3 \
-            --python-version=3
+            --image-version=composer-3-airflow-2.10.2-build.0
 
       - name: Wait for environment readiness
         if: steps.check-env.outcome == 'failure'
