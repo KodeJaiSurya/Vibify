@@ -101,6 +101,12 @@ jobs:
             --project=${{ env.PROJECT_ID }} \
             variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
 
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+
       - name: Trigger DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
