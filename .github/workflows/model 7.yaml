@@ -73,10 +73,7 @@ jobs:
               }
           ]
 
-          job = aiplatform.CustomJob(
-              display_name="emotion-training-job",
-              worker_pool_specs=worker_pool_specs
-          )
+          job = aiplatform.CustomJob(    display_name="emotion-training-job",    worker_pool_specs=worker_pool_specs,    staging_bucket='gs://staging-bucket-model')
 
           job.run(sync=True)
 
