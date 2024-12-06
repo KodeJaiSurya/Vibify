@@ -90,7 +90,7 @@ jobs:
           else
             echo "All required packages are already installed"
           fi
-s
+          
       - name: Get Composer GCS bucket
         id: get-bucket
         run: |
