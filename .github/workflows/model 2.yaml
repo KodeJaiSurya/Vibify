@@ -4,12 +4,13 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: viberain
-  REGION: us-east1
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1
   ARTIFACT_REGISTRY: gcr.io
   REPOSITORY: viberain
   IMAGE_NAME: emotion-training
   IMAGE_TAG: latest
+  DOCKERFILE_PATH: pipelines/dags/src/trainer/Dockerfile
 
 jobs:
   build-and-train:
@@ -28,7 +29,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} .
+          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ${{ env.DOCKERFILE_PATH }} .
 
       - name: Push Docker image to Artifact Registry
         run: |
