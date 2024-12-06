@@ -42,6 +42,7 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=${{ secrets.GCP_PROJECT_ID }} \
             --image-version=composer-3-airflow-2.10.2-build.0 \
+            --service-account "vibebot@vibify-demo.iam.gserviceaccount.com \
             --environment-size=small \
             --scheduler-cpu=0.5 \
             --scheduler-memory=1 \
