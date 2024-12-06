@@ -5,7 +5,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  LOCATION: "us-east1"
+  LOCATION: "us-central1"
   ENVIRONMENT_NAME: "data-pipeline"
 
 jobs:
