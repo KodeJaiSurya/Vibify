@@ -59,7 +59,7 @@ jobs:
           python - <<EOF
           from google.cloud import aiplatform
 
-          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}')
+          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}',staging_bucket='gs://staging-bucket-model')
 
           worker_pool_specs = [
               {
