@@ -1,6 +1,5 @@
-from google.cloud import composer
-from google.cloud.composer import environments_v1
-from google.cloud.composer.environments_v1.types import Environment
+from airflow.providers.google.cloud import composer
+from google.cloud.orchestration.airflow.service.v1 import Environments
 import logging
 import os
 import time

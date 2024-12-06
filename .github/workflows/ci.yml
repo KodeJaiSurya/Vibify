@@ -7,7 +7,6 @@ on:
       - main
       - kirti
       - jai
-      - anji
     paths:
       - '**'  # triggers build steps for any change
       # - 'pipelines/**'  # triggers model training and validation whenever new code is pushed that affects the model
