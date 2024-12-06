@@ -1,0 +1,139 @@
+name: Model Pipeline
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: viberain
+  REGION: us-central1
+  ARTIFACT_REGISTRY: gcr.io
+  REPOSITORY: viberain
+  IMAGE_NAME: emotion-training
+  IMAGE_TAG: latest
+  DOCKERFILE_PATH: pipelines/dags/src/trainer/Dockerfile
+  TRAINER_DIR: pipelines/dags/src/trainer
+
+jobs:
+  build-and-train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.OLD_GCP_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ${{ env.DOCKERFILE_PATH }} ${{ env.TRAINER_DIR }}
+
+      - name: Push Docker image to Artifact Registry
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-cloud-aiplatform
+
+      - name: Train model with Vertex AI and Hyperparameter Tuning
+        run: |
+          python - <<EOF
+          from google.cloud import aiplatform
+
+          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}', staging_bucket='gs://staging-bucket-central-model')
+
+          worker_pool_specs = [
+              {
+                  "machine_spec": {
+                      "machine_type": "n1-standard-4"
+                  },
+                  "replica_count": 1,
+                  "container_spec": {
+                      "image_uri": "${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}"
+                  }
+              }
+          ]
+
+          # Define hyperparameters to tune
+          hyperparameter_tuning_job = aiplatform.HyperparameterTuningJob(
+              display_name="emotion-training-hyperparameter-tuning",
+              worker_pool_specs=worker_pool_specs,
+              custom_job_spec={
+                  "max_trial_count": 5,
+                  "parallel_trial_count": 2,
+                  "study_spec": {
+                      "metrics": [{"metric_id": "accuracy", "goal": "MAXIMIZE"}],
+                      "parameters": [
+                          {
+                              "parameter_id": "learning_rate",
+                              "double_value_spec": {"min_value": 0.001, "max_value": 0.1},
+                              "scale_type": "UNIT_LOG_SCALE"
+                          },
+                          {
+                              "parameter_id": "num_layers",
+                              "integer_value_spec": {"min_value": 1, "max_value": 5},
+                              "scale_type": "UNIT_LINEAR_SCALE"
+                          }
+                      ]
+                  }
+              }
+          )
+
+          # Run the hyperparameter tuning job
+          hyperparameter_tuning_job.run()
+
+          # Get the best trial
+          best_trial = hyperparameter_tuning_job.get_best_trial()
+
+          if best_trial:
+              # Use the best hyperparameters to create and run a final custom job
+              best_hyperparameters = best_trial.parameters
+              final_job = aiplatform.CustomJob(
+                  display_name="emotion-training-final",
+                  worker_pool_specs=[{
+                      **worker_pool_specs[0],
+                      "container_spec": {
+                          **worker_pool_specs[0]["container_spec"],
+                          "args": [
+                              f"--learning_rate={best_hyperparameters['learning_rate']}",
+                              f"--num_layers={best_hyperparameters['num_layers']}"
+                          ]
+                      }
+                  }],
+                  staging_bucket='gs://staging-bucket-central-model'
+              )
+              final_job.run(sync=True)
+              
+              model = final_job.get_model()
+              
+              if model:
+                  model.upload(
+                      display_name="emotion-model",
+                      artifact_uri=final_job.output_uri,
+                      serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+                  )
+                  print(f"Model uploaded: {model.resource_name}")
+              else:
+                  print("No model was produced by the final job.")
+          else:
+              print("No successful trials were found in the hyperparameter tuning job.")
+          EOF
