@@ -70,6 +70,7 @@ jobs:
         run: |
           gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
           --location=${{ env.LOCATION }} \
+          --project=vibify-demo \
           --update-pypi-packages-from-file requirements.txt
 
       - name: Get Composer GCS bucket
