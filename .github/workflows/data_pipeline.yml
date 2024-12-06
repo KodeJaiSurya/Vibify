@@ -61,13 +61,36 @@ jobs:
               --storage-bucket us-east1-data-pipeline-c88b0d97-bucket 
           fi
 
-      - name: Install Python Dependencies
+      - name: Check and Install Python Dependencies
         run: |
-          gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
-          --location=${{ env.LOCATION }} \
-          --project=vibify-demo \
-          --update-pypi-packages-from-file pipelines/dags/requirements.txt
-
+          # Get current packages
+          CURRENT_PACKAGES=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --format="get(config.softwareConfig.pypiPackages)")
+          
+          # Read required packages
+          REQUIRED_PACKAGES=$(cat pipelines/dags/requirements.txt)
+          
+          # Check if any package is missing
+          MISSING=false
+          while IFS= read -r package; do
+            if ! echo "$CURRENT_PACKAGES" | grep -q "$(echo $package | cut -d'=' -f1)"; then
+              MISSING=true
+              break
+            fi
+          done <<< "$REQUIRED_PACKAGES"
+          
+          if [ "$MISSING" = true ]; then
+            echo "Installing missing Python dependencies"
+            gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
+              --location=${{ env.LOCATION }} \
+              --project=vibify-demo \
+              --update-pypi-packages-from-file pipelines/dags/requirements.txt
+          else
+            echo "All required packages are already installed"
+          fi
+s
       - name: Get Composer GCS bucket
         id: get-bucket
         run: |
@@ -98,12 +121,12 @@ jobs:
           # Set each variable in Airflow
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ env.PROJECT_ID }} \
+            --project=vibify-demo \
             variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
 
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ env.PROJECT_ID }} \
+            --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
 
 
