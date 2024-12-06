@@ -5,7 +5,7 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  LOCATION: "us-central1"
+  LOCATION: "us-east1"
   ENVIRONMENT_NAME: "data-pipeline"
   PYTHON_PACKAGES: "scikit-learn==1.5.2 opendatasets==0.1.22"
 
@@ -41,26 +41,30 @@ jobs:
         run: |
           echo "${{ env.PYTHON_PACKAGES }}" > requirements.txt
 
-      - name: Create Cloud Composer Environment
+      - name: Check/Create Cloud Composer Environment
         run: |
-          gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --project=vibify-demo \
-            --image-version=composer-3-airflow-2.10.2-build.0 \
-            --service-account=751083964065-compute@developer.gserviceaccount.com \
-            --environment-size=small \
-            --scheduler-cpu=0.5 \
-            --scheduler-memory=1 \
-            --scheduler-storage=1 \
-            --web-server-cpu=0.5 \
-            --web-server-memory=1 \
-            --web-server-storage=1 \
-            --worker-cpu=0.5 \
-            --worker-memory=1 \
-            --worker-storage=1 \
-            --min-workers=1 \
-            --max-workers=3 
-        # --storage-bucket vibify-bucket
+          if [[ -n "$(gcloud composer environments list --locations=${{ env.LOCATION }} --project=vibify-demo --filter="name:${{ env.ENVIRONMENT_NAME }}" --format="get(name)")" ]]; then
+            echo "Environment ${{ env.ENVIRONMENT_NAME }} already exists"
+          else
+            gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
+              --location=${{ env.LOCATION }} \
+              --project=vibify-demo \
+              --image-version=composer-3-airflow-2.10.2-build.0 \
+              --service-account=751083964065-compute@developer.gserviceaccount.com \
+              --environment-size=small \
+              --scheduler-cpu=0.5 \
+              --scheduler-memory=1 \
+              --scheduler-storage=1 \
+              --web-server-cpu=0.5 \
+              --web-server-memory=1 \
+              --web-server-storage=1 \
+              --worker-cpu=0.5 \
+              --worker-memory=1 \
+              --worker-storage=1 \
+              --min-workers=1 \
+              --max-workers=3 \
+              --storage-bucket us-east1-data-pipeline-c88b0d97-bucket 
+          fi
 
       - name: Install Python Dependencies
         run: |
@@ -116,6 +120,7 @@ jobs:
 
       - name: Delete Cloud Composer Environment
         run: |
+          sleep 300 # To see that the dag works properly and to show in video
           gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
