@@ -61,7 +61,7 @@ jobs:
         run: |
           DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --project=vibify-demo \
             --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
           echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
 
@@ -82,5 +82,5 @@ jobs:
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ secrets.GCP_PROJECT_ID }} \
+            --project=vibify-demo \
             dags trigger -- data_pipeline
