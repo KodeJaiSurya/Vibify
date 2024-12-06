@@ -129,6 +129,20 @@ jobs:
             --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
 
+      - name: Setup Git in Composer Environment
+        run: |
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            variables set \
+            GIT_PYTHON_REFRESH=quiet
+      
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            cli -- \
+            bash -c "cd /home/airflow && git init && git config --global --add safe.directory /home/airflow"
+
       - name: Trigger DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
