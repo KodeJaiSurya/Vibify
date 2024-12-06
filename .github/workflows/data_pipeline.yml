@@ -60,7 +60,12 @@ jobs:
             --worker-storage=1 \
             --min-workers=1 \
             --max-workers=3 \
-            --python-packages-file=requirements.txt
+
+      - name: Install Python Dependencies
+        run: |
+          gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
+          --location=${{ env.LOCATION }} \
+          --update-pypi-packages-from-file requirements.txt
 
       - name: Get Composer GCS bucket
         id: get-bucket
@@ -101,3 +106,10 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             dags trigger -- data_pipeline
+
+      - name: Delete Cloud Composer Environment
+        run: |
+          gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --quiet
