@@ -11,6 +11,7 @@ env:
   IMAGE_NAME: emotion-training
   IMAGE_TAG: latest
   DOCKERFILE_PATH: pipelines/dags/src/trainer/Dockerfile
+  TRAINER_DIR: pipelines/dags/src/trainer
 
 jobs:
   build-and-train:
@@ -29,7 +30,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ${{ env.DOCKERFILE_PATH }} .
+          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ${{ env.DOCKERFILE_PATH }} ${{ env.TRAINER_DIR }}
 
       - name: Push Docker image to Artifact Registry
         run: |
