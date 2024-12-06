@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  PROJECT_ID: viberain
   REGION: us-central1
   ARTIFACT_REGISTRY: gcr.io
   REPOSITORY: viberain
