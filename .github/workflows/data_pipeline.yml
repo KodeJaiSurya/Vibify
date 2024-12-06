@@ -58,7 +58,7 @@ jobs:
               --worker-storage=1 \
               --min-workers=1 \
               --max-workers=3 \
-              --storage-bucket us-east1-data-pipeline-c88b0d97-bucket 
+              --storage-bucket vibe-demo-bucket 
           fi
 
       - name: Check and Install Python Dependencies
@@ -99,10 +99,6 @@ jobs:
             --project=vibify-demo \
             --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
           echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
-
-      - name: Clear existing DAGs
-        run: |
-          gsutil -m rm -rf ${{ env.DAGS_BUCKET }}/dags/* || true
 
       - name: Copy DAGs folder to GCS
         run: |
