@@ -93,7 +93,8 @@ jobs:
           hyperparameter_tuning_job.run()
 
           # Get the best trial
-          best_trial = hyperparameter_tuning_job.get_best_trial()
+          trials = hyperparameter_tuning_job.trials
+          best_trial = max(trials, key=lambda trial: trial.final_measurement.metrics["accuracy"].value)
 
           if best_trial:
               # Use the best hyperparameters to create and run a final custom job
