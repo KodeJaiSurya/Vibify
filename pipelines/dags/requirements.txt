@@ -1,2 +1,3 @@
 scikit-learn==1.5.2
 opendatasets
+apache-airflow-providers-slack
