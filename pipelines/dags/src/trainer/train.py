@@ -78,7 +78,7 @@ class ModelTrainer:
             model=model,
             X_train=data_dict['X_train'],
             y_train=data_dict['y_train'],
-            epochs=30,
+            epochs=5,
             batch_size=64
         )
         
