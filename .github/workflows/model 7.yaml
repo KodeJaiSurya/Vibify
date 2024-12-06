@@ -59,7 +59,7 @@ jobs:
           python - <<EOF
           from google.cloud import aiplatform
 
-          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}',staging_bucket='gs://staging-bucket-model')
+          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}',staging_bucket='gs://staging-bucket-central-model')
 
           worker_pool_specs = [
               {
@@ -73,7 +73,7 @@ jobs:
               }
           ]
 
-          job = aiplatform.CustomJob(    display_name="emotion-training-job",    worker_pool_specs=worker_pool_specs,    staging_bucket='gs://staging-bucket-model')
+          job = aiplatform.CustomJob(    display_name="emotion-training-job",    worker_pool_specs=worker_pool_specs,    staging_bucket='gs://staging-bucket-central-model')
 
           job.run(sync=True)
 
