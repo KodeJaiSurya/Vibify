@@ -93,11 +93,11 @@ jobs:
           hyperparameter_tuning_job.run()
 
           # Get the best trial
-          trials = hyperparameter_tuning_job.list_trials()
+          trials = hyperparameter_tuning_job.trials
           if trials:
-              best_trial = max(trials, key=lambda trial: trial.final_measurement.metrics["accuracy"].value)
+              best_trial = max(trials, key=lambda trial: trial.final_measurement.metrics["accuracy"].value if trial.final_measurement else float('-inf'))
 
-              if best_trial:
+              if best_trial and best_trial.final_measurement:
                   # Use the best hyperparameters to create and run a final custom job
                   best_hyperparameters = best_trial.parameters
                   final_job = aiplatform.CustomJob(
@@ -107,8 +107,8 @@ jobs:
                           "container_spec": {
                               **worker_pool_specs[0]["container_spec"],
                               "args": [
-                                  f"--learning_rate={best_hyperparameters['learning_rate'].value}",
-                                  f"--num_layers={best_hyperparameters['num_layers'].value}"
+                                  f"--learning_rate={best_hyperparameters['learning_rate']}",
+                                  f"--num_layers={best_hyperparameters['num_layers']}"
                               ]
                           }
                       }]
