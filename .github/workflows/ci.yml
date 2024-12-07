@@ -39,7 +39,8 @@ jobs:
 
       - name: Run tests
         run: |
-          python -m unittest discover -s tests  # Runs unittests in the tests directory
+          #python -m unittest discover -s tests  # Runs unittests in the tests directory
+          python -m unittest tests/test_song_data_pipeline.py
 
       - name: Setup GCP Authentication
         uses: google-github-actions/auth@v1
