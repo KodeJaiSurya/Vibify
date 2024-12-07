@@ -61,6 +61,31 @@ jobs:
               --storage-bucket vibe-demo-bucket 
           fi
 
+      - name: Create Git Init Script
+        run: |
+          echo '#!/bin/bash
+          cd /home/airflow
+          git init
+          git config --global --add safe.directory /home/airflow' > pipelines/dags/git_init.sh
+
+      - name: Create Git Init DAG
+        run: |
+          echo 'from airflow import DAG
+          from airflow.operators.bash_operator import BashOperator
+          from datetime import datetime
+          
+          dag = DAG(
+              "git_init",
+              start_date=datetime(2024, 1, 1),
+              schedule_interval=None
+          )
+          
+          git_init = BashOperator(
+              task_id="git_init",
+              bash_command="bash /home/airflow/gcs/dags/git_init.sh",
+              dag=dag
+          )' > pipelines/dags/git_init.py
+
       - name: Check and Install Python Dependencies
         run: |
           # Get current packages
@@ -114,6 +139,12 @@ jobs:
           # Wait for environment to be ready
           sleep 300
           
+          # Set Git environment variable
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            variables set -- GIT_PYTHON_REFRESH quiet
+          
           # Set each variable in Airflow
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
@@ -125,15 +156,17 @@ jobs:
             --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
 
-      - name: Setup Git in Composer Environment
-        run: |      
+      - name: Trigger Git Init DAG
+        run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            cli -- \
-            bash -c "cd /home/airflow && git init && git config --global --add safe.directory /home/airflow"
+            trigger_dag -- git_init
 
-      - name: Trigger DAG
+      - name: Wait for Git Init
+        run: sleep 60
+
+      - name: Trigger Main DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
