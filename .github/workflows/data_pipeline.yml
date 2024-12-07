@@ -161,7 +161,7 @@ jobs:
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            trigger_dag -- git_init
+            dags trigger -- git_init
 
       - name: Wait for Git Init
         run: sleep 60
