@@ -90,9 +90,9 @@ jobs:
               metric_spec={"accuracy": "maximize"},
               parameter_spec={
                   "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
-                  "num_layers": aiplatform.hyperparameter_tuning.IntegerParameterSpec(min=1, max=5, scale="linear")
+                  "num_layers": aiplatform.hyperparameter_tuning.IntegerParameterSpec(min=1, max=10, scale="linear")
               },
-              max_trial_count=2,
+              max_trial_count=10,
               parallel_trial_count=1
           )
 
