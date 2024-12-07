@@ -73,56 +73,61 @@ jobs:
               }
           ]
 
-          custom_job_spec = aiplatform.CustomJobSpec(
+          custom_job = aiplatform.CustomJob(
+              display_name="emotion-training-job",
               worker_pool_specs=worker_pool_specs
           )
 
           hyperparameter_tuning_job = aiplatform.HyperparameterTuningJob(
               display_name="emotion-training-hyperparameter-tuning",
-              custom_job_spec=custom_job_spec,
+              custom_job=custom_job,
               metric_spec={"accuracy": "maximize"},
               parameter_spec={
-                  "learning_rate": aiplatform.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
-                  "num_layers": aiplatform.IntegerParameterSpec(min=1, max=5, scale="linear")
+                  "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
+                  "num_layers": aiplatform.hyperparameter_tuning.IntegerParameterSpec(min=1, max=5, scale="linear")
               },
-              max_trial_count=5,
-              parallel_trial_count=2
+              max_trial_count=2,  # Reduced for faster experimentation
+              parallel_trial_count=1  # Reduced for faster experimentation
           )
 
           hyperparameter_tuning_job.run()
 
           # Get the best trial
-          best_trial = hyperparameter_tuning_job.get_best_trial()
+          trials = hyperparameter_tuning_job.trials
+          if trials:
+              best_trial = max(trials, key=lambda trial: trial.final_measurement.metrics["accuracy"].value if trial.final_measurement else float('-inf'))
 
-          if best_trial:
-              # Use the best hyperparameters to create and run a final custom job
-              best_hyperparameters = best_trial.parameters
-              final_job = aiplatform.CustomJob(
-                  display_name="emotion-training-final",
-                  worker_pool_specs=[{
-                      **worker_pool_specs[0],
-                      "container_spec": {
-                          **worker_pool_specs[0]["container_spec"],
-                          "args": [
-                              f"--learning_rate={best_hyperparameters['learning_rate']}",
-                              f"--num_layers={best_hyperparameters['num_layers']}"
-                          ]
-                      }
-                  }]
-              )
-              final_job.run(sync=True)
-              
-              model = final_job.get_model()
-              
-              if model:
-                  model.upload(
-                      display_name="emotion-model",
-                      artifact_uri=final_job.output_uri,
-                      serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+              if best_trial and best_trial.final_measurement:
+                  # Use the best hyperparameters to create and run a final custom job
+                  best_hyperparameters = best_trial.parameters
+                  final_job = aiplatform.CustomJob(
+                      display_name="emotion-training-final",
+                      worker_pool_specs=[{
+                          **worker_pool_specs[0],
+                          "container_spec": {
+                              **worker_pool_specs[0]["container_spec"],
+                              "args": [
+                                  f"--learning_rate={best_hyperparameters['learning_rate']}",
+                                  f"--num_layers={best_hyperparameters['num_layers']}"
+                              ]
+                          }
+                      }]
                   )
-                  print(f"Model uploaded: {model.resource_name}")
+                  final_job.run(sync=True)
+                  
+                  model = final_job.get_model()
+                  
+                  if model:
+                      model.upload(
+                          display_name="emotion-model",
+                          artifact_uri=final_job.output_uri,
+                          serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+                      )
+                      print(f"Model uploaded: {model.resource_name}")
+                  else:
+                      print("No model was produced by the final job.")
               else:
-                  print("No model was produced by the final job.")
+                  print("No successful trials were found in the hyperparameter tuning job.")
           else:
-              print("No successful trials were found in the hyperparameter tuning job.")
+              print("No trials were returned by the hyperparameter tuning job.")
           EOF
