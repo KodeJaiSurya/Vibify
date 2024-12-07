@@ -84,125 +84,82 @@ jobs:
               worker_pool_specs=worker_pool_specs
           )
 
-          hyperparameter_tuning_job = aiplatform.HyperparameterTuningJob(
-              display_name="emotion-training-hyperparameter-tuning",
-              custom_job=custom_job,
-              metric_spec={"accuracy": "maximize"},
-              parameter_spec={
-                  "learning_rate": aiplatform.hyperparameter_tuning.DoubleParameterSpec(min=0.001, max=0.1, scale="log"),
-                  "num_layers": aiplatform.hyperparameter_tuning.IntegerParameterSpec(min=1, max=10, scale="linear")
-              },
-              max_trial_count=10,
-              parallel_trial_count=1
-          )
+          custom_job.run(sync=True)
+          
+          model = custom_job.get_model()
+          
+          if model:
+              model.upload(
+                  display_name="emotion-model",
+                  artifact_uri=custom_job.output_uri,
+                  serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+              )
+              print(f"Model uploaded: {model.resource_name}")
 
-          hyperparameter_tuning_job.run()
+              validation_job = aiplatform.CustomJob(
+                  display_name="emotion-model-validation",
+                  worker_pool_specs=[{
+                      **worker_pool_specs[0],
+                      "container_spec": {
+                          **worker_pool_specs[0]["container_spec"],
+                          "args": [
+                              f"--model_path={model.resource_name}",
+                              "--mode=validate"
+                          ]
+                      }
+                  }]
+              )
+              validation_job.run(sync=True)
 
-          trials = hyperparameter_tuning_job.trials
-          if trials:
-              best_trial = max(trials, key=lambda trial: trial.final_measurement.metrics["accuracy"].value if trial.final_measurement else float('-inf'))
+              storage_client = storage.Client()
+              bucket = storage_client.bucket('${{ env.BUCKET_NAME }}')
+              blob = bucket.blob('validation_results.txt')
+              validation_results = blob.download_as_text()
+              print(f"Validation results: {validation_results}")
 
-              if best_trial and best_trial.final_measurement:
-                  best_hyperparameters = best_trial.parameters
-                  final_job = aiplatform.CustomJob(
-                      display_name="emotion-training-final",
-                      worker_pool_specs=[{
-                          **worker_pool_specs[0],
-                          "container_spec": {
-                              **worker_pool_specs[0]["container_spec"],
-                              "args": [
-                                  f"--learning_rate={best_hyperparameters['learning_rate']}",
-                                  f"--num_layers={best_hyperparameters['num_layers']}",
-                                  "--mode=train"
-                              ]
-                          }
-                      }]
-                  )
-                  final_job.run(sync=True)
-                  
-                  model = final_job.get_model()
-                  
-                  if model:
-                      model.upload(
-                          display_name="emotion-model",
-                          artifact_uri=final_job.output_uri,
-                          serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+              accuracy_match = re.search(r'Accuracy: (\d+\.\d+)', validation_results)
+              if accuracy_match:
+                  accuracy = float(accuracy_match.group(1))
+                  print(f"Validation accuracy: {accuracy}")
+
+                  if accuracy > 0.5:
+                      endpoint = model.deploy(
+                          machine_type="n1-standard-4",
+                          min_replica_count=1,
+                          max_replica_count=1,
+                          enable_monitoring=True
                       )
-                      print(f"Model uploaded: {model.resource_name}")
 
-                      # Validation step
-                      validation_job = aiplatform.CustomJob(
-                          display_name="emotion-model-validation",
-                          worker_pool_specs=[{
-                              **worker_pool_specs[0],
-                              "container_spec": {
-                                  **worker_pool_specs[0]["container_spec"],
-                                  "args": [
-                                      f"--model_path={model.resource_name}",
-                                      "--mode=validate"
-                                  ]
-                              }
-                          }]
-                      )
-                      validation_job.run(sync=True)
-
-                      # Check validation results
-                      storage_client = storage.Client()
-                      bucket = storage_client.bucket('${{ env.BUCKET_NAME }}')
-                      blob = bucket.blob('validation_results.txt')
-                      validation_results = blob.download_as_text()
-                      print(f"Validation results: {validation_results}")
-
-                      # Parse validation accuracy
-                      accuracy_match = re.search(r'Accuracy: (\d+\.\d+)', validation_results)
-                      if accuracy_match:
-                          accuracy = float(accuracy_match.group(1))
-                          print(f"Validation accuracy: {accuracy}")
-
-                          # Conditional deployment based on accuracy threshold
-                          if accuracy > 0.5:  # 50% accuracy threshold
-                              # Set up model monitoring
-                              endpoint = model.deploy(
-                                  machine_type="n1-standard-4",
-                                  min_replica_count=1,
-                                  max_replica_count=1,
-                                  enable_monitoring=True
-                              )
-
-                              monitoring_job = aiplatform.ModelDeploymentMonitoringJob.create(
-                                  display_name="emotion-cnn-monitoring",
-                                  endpoint=endpoint.resource_name,
-                                  model_deployment_monitoring_objective_configs=[
-                                      {
-                                          "deployed_model_id": endpoint.deployed_models[0].id,
-                                          "objective_config": {
-                                              "prediction_drift_detection_config": {
-                                                  "attribution_score_skew_thresholds": {
-                                                      "Angry": {"value": 0.3},
-                                                      "Happy": {"value": 0.3},
-                                                      "Sad": {"value": 0.3},
-                                                      "Neutral": {"value": 0.3}
-                                                  }
-                                              }
+                      monitoring_job = aiplatform.ModelDeploymentMonitoringJob.create(
+                          display_name="emotion-cnn-monitoring",
+                          endpoint=endpoint.resource_name,
+                          model_deployment_monitoring_objective_configs=[
+                              {
+                                  "deployed_model_id": endpoint.deployed_models[0].id,
+                                  "objective_config": {
+                                      "prediction_drift_detection_config": {
+                                          "attribution_score_skew_thresholds": {
+                                              "Angry": {"value": 0.3},
+                                              "Happy": {"value": 0.3},
+                                              "Sad": {"value": 0.3},
+                                              "Neutral": {"value": 0.3}
                                           }
                                       }
-                                  ],
-                                  logging_sampling_strategy={
-                                      "random_sample_config": {"sample_rate": 0.8}
-                                  },
-                                  schedule_config={
-                                      "monitor_interval": "3600s"
                                   }
-                              )
-                              print(f"Model deployed and monitoring job created: {monitoring_job.resource_name}")
-                          else:
-                              print(f"Model not deployed. Accuracy {accuracy} is below the 50% threshold.")
-                      else:
-                          print("Unable to parse accuracy from validation results. Model not deployed.")
+                              }
+                          ],
+                          logging_sampling_strategy={
+                              "random_sample_config": {"sample_rate": 0.8}
+                          },
+                          schedule_config={
+                              "monitor_interval": "3600s"
+                          }
+                      )
+                      print(f"Model deployed and monitoring job created: {monitoring_job.resource_name}")
                   else:
-                      print("No model was produced by the final job.")
+                      print(f"Model not deployed. Accuracy {accuracy} is below the 50% threshold.")
               else:
-                  print("No successful trials were found in the hyperparameter tuning job.")
+                  print("Unable to parse accuracy from validation results. Model not deployed.")
           else:
-              print("No trials were returned by the hyperparameter tuning job.")
+              print("No model was produced by the job.")
           EOF
