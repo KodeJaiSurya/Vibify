@@ -5,35 +5,118 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  COMPOSER_ENVIRONMENT: "data-pipeline"
-  COMPOSER_LOCATION: "us-east1"
-  COMPOSER_IMAGE_VERSION: "composer-2.5.3-airflow-2.5.3"
-  GCS_BUCKET: ${{ secrets.GCS_BUCKET }}
+  LOCATION: "us-central1"
+  ENVIRONMENT_NAME: "data-pipeline"
+  PYTHON_PACKAGES: "scikit-learn==1.5.2 opendatasets==0.1.22"
 
 jobs:
-  setup-and-run-composer:
+  deploy-and-run:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.11"
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install google-cloud-composer google-cloud-storage
-
-      - name: Configure GCP credentials
+      - name: Google Auth
+        id: auth
         uses: google-github-actions/auth@v1
         with:
           credentials_json: ${{ secrets.GCP_KEY }}
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Setup Cloud Composer Environment
-        run: python src/setup_composer.py
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
 
-      - name: Deploy DAG to Cloud Composer
-        run: python src/deploy_dag.py
+      - name: Configure gcloud project
+        run: |
+          gcloud config set project ${{ secrets.GCP_PROJECT_ID }}
+
+      - name: Enable required APIs
+        run: |
+          gcloud services enable composer.googleapis.com
+          gcloud services enable artifactregistry.googleapis.com
+
+      - name: Create requirements.txt
+        run: |
+          echo "${{ env.PYTHON_PACKAGES }}" > requirements.txt
+
+      - name: Create Cloud Composer Environment
+        run: |
+          gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --image-version=composer-3-airflow-2.10.2-build.0 \
+            --service-account=751083964065-compute@developer.gserviceaccount.com \
+            --environment-size=small \
+            --scheduler-cpu=0.5 \
+            --scheduler-memory=1 \
+            --scheduler-storage=1 \
+            --web-server-cpu=0.5 \
+            --web-server-memory=1 \
+            --web-server-storage=1 \
+            --worker-cpu=0.5 \
+            --worker-memory=1 \
+            --worker-storage=1 \
+            --min-workers=1 \
+            --max-workers=3 
+        # --storage-bucket vibify-bucket
+
+      - name: Install Python Dependencies
+        run: |
+          gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
+          --location=${{ env.LOCATION }} \
+          --update-pypi-packages-from-file requirements.txt
+
+      - name: Get Composer GCS bucket
+        id: get-bucket
+        run: |
+          DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
+          echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
+
+      - name: Clear existing DAGs
+        run: |
+          gsutil -m rm -rf ${{ env.DAGS_BUCKET }}/dags/* || true
+
+      - name: Copy DAGs folder to GCS
+        run: |
+          gsutil -m cp -r pipelines/dags/* ${{ env.DAGS_BUCKET }}/dags/
+
+      - name: List uploaded DAGs
+        run: |
+          echo "Listing contents of DAGs folder in GCS:"
+          gsutil ls -r ${{ env.DAGS_BUCKET }}/dags/
+
+      - name: Set Airflow Variables
+        run: |
+          # Wait for environment to be ready
+          sleep 300
+          
+          # Set each variable in Airflow
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
+
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=${{ env.PROJECT_ID }} \
+            variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
+
+
+      - name: Trigger DAG
+        run: |
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            dags trigger -- data_pipeline
+
+      - name: Delete Cloud Composer Environment
+        run: |
+          gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --quiet
