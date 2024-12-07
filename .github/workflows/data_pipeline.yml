@@ -143,13 +143,13 @@ jobs:
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            variables set -- GIT_PYTHON_REFRESH quiet
+            variables set -- GCS_BUCKET_NAME "${{ env.DAGS_BUCKET }}"
           
           # Set each variable in Airflow
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
+            variables set -- GCP_PROJECT_ID ${{ secrets.GCP_PROJECT_ID }}
 
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
