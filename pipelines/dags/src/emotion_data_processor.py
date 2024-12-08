@@ -6,7 +6,7 @@ from typing import List, Tuple, Optional, Generator, Dict
 from pathlib import Path
 import tempfile
 from .emotion_gcs_handler import GCSHandler
-from .dvc_wrapper import DVCWrapper
+# from .dvc_wrapper import DVCWrapper
 
 class DataProcessor:
     """Handles data processing operations with GCS integration"""
@@ -19,7 +19,7 @@ class DataProcessor:
                  image_height: int = 48,
                  chunk_size: int = 2000):
         self.gcs_handler = gcs_handler
-        self.dvc = DVCWrapper(gcs_handler.bucket_name)
+        # self.dvc = DVCWrapper(gcs_handler.bucket_name)
         self.selected_emotions = selected_emotions
         self.emotion_map = emotion_map
         self.image_width = image_width
@@ -107,9 +107,9 @@ class DataProcessor:
         success = (self.gcs_handler.upload_file(X_local, X_gcs) and
                   self.gcs_handler.upload_file(y_local, y_gcs))
 
-        if success:
-            self.dvc.track_file(X_gcs)
-            self.dvc.track_file(y_gcs)
+        # if success:
+        #    self.dvc.track_file(X_gcs)
+        #    self.dvc.track_file(y_gcs)
         
         os.remove(X_local)
         os.remove(y_local)

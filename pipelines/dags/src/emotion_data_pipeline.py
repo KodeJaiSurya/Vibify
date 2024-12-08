@@ -2,7 +2,7 @@ import logging
 from .emotion_gcs_handler import GCSHandler
 from .emotion_data_processor import DataProcessor
 from .emotion_data_aggregator import DataAggregator
-from .dvc_wrapper import DVCWrapper
+# from .dvc_wrapper import DVCWrapper
 
 def init_gcs_handler() -> dict:
     """Initialize GCS handler and verify connection"""
@@ -19,7 +19,7 @@ def init_gcs_handler() -> dict:
     try:
         logger.info("Initializing GCS handler")
         handler = GCSHandler()
-        dvc = DVCWrapper(handler.bucket_name)  # Add this line
+        # dvc = DVCWrapper(handler.bucket_name)  # Add this line
         return {"status": "success"}
     except Exception as e:
         logger.error(f"GCS handler initialization error: {e}")

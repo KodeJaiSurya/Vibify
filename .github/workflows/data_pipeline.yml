@@ -5,9 +5,8 @@ on:
 
 env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  LOCATION: "us-central1"
+  LOCATION: "us-east1"
   ENVIRONMENT_NAME: "data-pipeline"
-  PYTHON_PACKAGES: "scikit-learn==1.5.2 opendatasets==0.1.22"
 
 jobs:
   deploy-and-run:
@@ -37,36 +36,85 @@ jobs:
           gcloud services enable composer.googleapis.com
           gcloud services enable artifactregistry.googleapis.com
 
-      - name: Create requirements.txt
+      - name: Check/Create Cloud Composer Environment
         run: |
-          echo "${{ env.PYTHON_PACKAGES }}" > requirements.txt
+          if [[ -n "$(gcloud composer environments list --locations=${{ env.LOCATION }} --project=vibify-demo --filter="name:${{ env.ENVIRONMENT_NAME }}" --format="get(name)")" ]]; then
+            echo "Environment ${{ env.ENVIRONMENT_NAME }} already exists"
+          else
+            gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
+              --location=${{ env.LOCATION }} \
+              --project=vibify-demo \
+              --image-version=composer-3-airflow-2.10.2-build.0 \
+              --service-account=751083964065-compute@developer.gserviceaccount.com \
+              --environment-size=small \
+              --scheduler-cpu=0.5 \
+              --scheduler-memory=1 \
+              --scheduler-storage=1 \
+              --web-server-cpu=0.5 \
+              --web-server-memory=1 \
+              --web-server-storage=1 \
+              --worker-cpu=0.5 \
+              --worker-memory=1 \
+              --worker-storage=1 \
+              --min-workers=1 \
+              --max-workers=3 \
+              --storage-bucket vibe-demo-bucket 
+          fi
 
-      - name: Create Cloud Composer Environment
+      - name: Create Git Init Script
         run: |
-          gcloud composer environments create ${{ env.ENVIRONMENT_NAME }} \
+          echo '#!/bin/bash
+          cd /home/airflow
+          git init
+          git config --global --add safe.directory /home/airflow' > pipelines/dags/git_init.sh
+
+      - name: Create Git Init DAG
+        run: |
+          echo 'from airflow import DAG
+          from airflow.operators.bash_operator import BashOperator
+          from datetime import datetime
+          
+          dag = DAG(
+              "git_init",
+              start_date=datetime(2024, 1, 1),
+              schedule_interval=None
+          )
+          
+          git_init = BashOperator(
+              task_id="git_init",
+              bash_command="bash /home/airflow/gcs/dags/git_init.sh",
+              dag=dag
+          )' > pipelines/dags/git_init.py
+
+      - name: Check and Install Python Dependencies
+        run: |
+          # Get current packages
+          CURRENT_PACKAGES=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            --image-version=composer-3-airflow-2.10.2-build.0 \
-            --service-account=751083964065-compute@developer.gserviceaccount.com \
-            --environment-size=small \
-            --scheduler-cpu=0.5 \
-            --scheduler-memory=1 \
-            --scheduler-storage=1 \
-            --web-server-cpu=0.5 \
-            --web-server-memory=1 \
-            --web-server-storage=1 \
-            --worker-cpu=0.5 \
-            --worker-memory=1 \
-            --worker-storage=1 \
-            --min-workers=1 \
-            --max-workers=3 
-        # --storage-bucket vibify-bucket
-
-      - name: Install Python Dependencies
-        run: |
-          gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
-          --location=${{ env.LOCATION }} \
-          --update-pypi-packages-from-file requirements.txt
+            --format="get(config.softwareConfig.pypiPackages)")
+          
+          # Read required packages
+          REQUIRED_PACKAGES=$(cat pipelines/dags/requirements.txt)
+          
+          # Check if any package is missing
+          MISSING=false
+          while IFS= read -r package; do
+            if ! echo "$CURRENT_PACKAGES" | grep -q "$(echo $package | cut -d'=' -f1)"; then
+              MISSING=true
+              break
+            fi
+          done <<< "$REQUIRED_PACKAGES"
+          
+          if [ "$MISSING" = true ]; then
+            echo "Installing missing Python dependencies"
+            gcloud composer environments update ${{ env.ENVIRONMENT_NAME }} \
+              --location=${{ env.LOCATION }} \
+              --project=vibify-demo \
+              --update-pypi-packages-from-file pipelines/dags/requirements.txt
+          else
+            echo "All required packages are already installed"
+          fi
 
       - name: Get Composer GCS bucket
         id: get-bucket
@@ -76,10 +124,6 @@ jobs:
             --project=vibify-demo \
             --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
           echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
-
-      - name: Clear existing DAGs
-        run: |
-          gsutil -m rm -rf ${{ env.DAGS_BUCKET }}/dags/* || true
 
       - name: Copy DAGs folder to GCS
         run: |
@@ -95,19 +139,34 @@ jobs:
           # Wait for environment to be ready
           sleep 300
           
+          # Set Git environment variable
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            variables set -- GCS_BUCKET_NAME "${{ env.DAGS_BUCKET }}"
+          
           # Set each variable in Airflow
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ env.PROJECT_ID }} \
-            variables set -- GCP_PROJECT_ID "${{ env.DAGS_BUCKET }}"
+            --project=vibify-demo \
+            variables set -- GCP_PROJECT_ID ${{ secrets.GCP_PROJECT_ID }}
 
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
-            --project=${{ env.PROJECT_ID }} \
+            --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
 
+      - name: Trigger Git Init DAG
+        run: |
+          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            dags trigger -- git_init
 
-      - name: Trigger DAG
+      - name: Wait for Git Init
+        run: sleep 60
+
+      - name: Trigger Main DAG
         run: |
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
@@ -116,6 +175,7 @@ jobs:
 
       - name: Delete Cloud Composer Environment
         run: |
+          sleep 300 # To see that the dag works properly and to show in video
           gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
