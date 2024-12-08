@@ -1,0 +1,165 @@
+name: Model Pipeline Updated
+
+on:
+  workflow_dispatch:
+
+env:
+  PROJECT_ID: viberain
+  REGION: us-central1
+  ARTIFACT_REGISTRY: gcr.io
+  REPOSITORY: viberain
+  IMAGE_NAME: emotion-training
+  IMAGE_TAG: latest
+  DOCKERFILE_PATH: pipelines/dags/src/trainer/Dockerfile
+  TRAINER_DIR: pipelines/dags/src/trainer
+  BUCKET_NAME: vibebucketoncloudv1
+
+jobs:
+  build-and-train:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v1
+        with:
+          credentials_json: ${{ secrets.OLD_GCP_KEY }}
+          project_id: ${{ env.PROJECT_ID }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+          install_components: 'gke-gcloud-auth-plugin'
+
+      - name: Configure Docker
+        run: |
+          gcloud auth configure-docker ${{ env.ARTIFACT_REGISTRY }} --quiet
+
+      - name: Build Docker image
+        run: |
+          docker build -t ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }} -f ${{ env.DOCKERFILE_PATH }} ${{ env.TRAINER_DIR }}
+
+      - name: Push Docker image to Artifact Registry
+        run: |
+          docker push ${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install google-cloud-aiplatform google-cloud-storage
+
+      - name: Train, validate, and monitor model with Vertex AI
+        run: |
+          python - <<EOF
+          from google.cloud import aiplatform, storage
+          import os
+          import re
+
+          aiplatform.init(project='${{ env.PROJECT_ID }}', location='${{ env.REGION }}', staging_bucket='gs://staging-bucket-central-model')
+
+          worker_pool_specs = [
+              {
+                  "machine_spec": {
+                      "machine_type": "n1-standard-4"
+                  },
+                  "replica_count": 1,
+                  "container_spec": {
+                      "image_uri": "${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+                      "env": [
+                          {"name": "BUCKET_NAME", "value": "${{ env.BUCKET_NAME }}"}
+                      ]
+                  }
+              }
+          ]
+
+          custom_job = aiplatform.CustomJob(
+              display_name="emotion-training-job",
+              worker_pool_specs=worker_pool_specs
+          )
+
+          custom_job.run(sync=True)
+          
+          model = custom_job.get_model()
+          
+          if model:
+              model.upload(
+                  display_name="emotion-model",
+                  artifact_uri=custom_job.output_uri,
+                  serving_container_image_uri="${{ env.ARTIFACT_REGISTRY }}/${{ env.PROJECT_ID }}/${{ env.REPOSITORY }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}",
+              )
+              print(f"Model uploaded: {model.resource_name}")
+
+              validation_job = aiplatform.CustomJob(
+                  display_name="emotion-model-validation",
+                  worker_pool_specs=[{
+                      **worker_pool_specs[0],
+                      "container_spec": {
+                          **worker_pool_specs[0]["container_spec"],
+                          "args": [
+                              f"--model_path={model.resource_name}",
+                              "--mode=validate"
+                          ]
+                      }
+                  }]
+              )
+              validation_job.run(sync=True)
+
+              storage_client = storage.Client()
+              bucket = storage_client.bucket('${{ env.BUCKET_NAME }}')
+              blob = bucket.blob('validation_results.txt')
+              validation_results = blob.download_as_text()
+              print(f"Validation results: {validation_results}")
+
+              accuracy_match = re.search(r'Accuracy: (\d+\.\d+)', validation_results)
+              if accuracy_match:
+                  accuracy = float(accuracy_match.group(1))
+                  print(f"Validation accuracy: {accuracy}")
+
+                  if accuracy > 0.5:
+                      endpoint = model.deploy(
+                          machine_type="n1-standard-4",
+                          min_replica_count=1,
+                          max_replica_count=1,
+                          enable_monitoring=True
+                      )
+
+                      monitoring_job = aiplatform.ModelDeploymentMonitoringJob.create(
+                          display_name="emotion-cnn-monitoring",
+                          endpoint=endpoint.resource_name,
+                          model_deployment_monitoring_objective_configs=[
+                              {
+                                  "deployed_model_id": endpoint.deployed_models[0].id,
+                                  "objective_config": {
+                                      "prediction_drift_detection_config": {
+                                          "attribution_score_skew_thresholds": {
+                                              "Angry": {"value": 0.3},
+                                              "Happy": {"value": 0.3},
+                                              "Sad": {"value": 0.3},
+                                              "Neutral": {"value": 0.3}
+                                          }
+                                      }
+                                  }
+                              }
+                          ],
+                          logging_sampling_strategy={
+                              "random_sample_config": {"sample_rate": 0.8}
+                          },
+                          schedule_config={
+                              "monitor_interval": "3600s"
+                          }
+                      )
+                      print(f"Model deployed and monitoring job created: {monitoring_job.resource_name}")
+                  else:
+                      print(f"Model not deployed. Accuracy {accuracy} is below the 50% threshold.")
+              else:
+                  print("Unable to parse accuracy from validation results. Model not deployed.")
+          else:
+              print("No model was produced by the job.")
+          EOF
