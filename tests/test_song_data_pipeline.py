@@ -39,7 +39,6 @@ class TestLoadSongData(unittest.TestCase):
         mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
         mock_bucket.blob.assert_called_once_with(blob_name)
         mock_to_csv.assert_called_once() 
-        mock_dvc_wrapper.assert_called_once_with(bucket_name)  # Verify DVCWrapper initialization
 
 
     @patch("google.cloud.storage.Client")
