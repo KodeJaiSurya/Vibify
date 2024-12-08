@@ -54,7 +54,7 @@ jobs:
 
       - name: Download data
         run: |
-          python pipelines/dags/src/emotion_data_downloader.py
+          # python pipelines/dags/src/emotion_data_downloader.py
           python pipelines/dags/src/song_data_pipeline.py
 
       - name: Check Data Anomaly
