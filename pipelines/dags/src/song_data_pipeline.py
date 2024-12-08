@@ -4,7 +4,11 @@ import logging
 from google.cloud import storage
 import io
 from pathlib import Path
-from .dvc_wrapper import DVCWrapper  
+import sys
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+sys.path.append(project_root)
+from pipelines.dags.src.dvc_wrapper import DVCWrapper  
 
 # Set up logger
 logger = logging.getLogger(__name__)
