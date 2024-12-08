@@ -20,15 +20,17 @@ from pipelines.dags.src.song_data_pipeline import save_features, load_song_data,
 
 class TestLoadSongData(unittest.TestCase):
 
-    @patch("google.cloud.storage.Client")
-    def test_success(self, mock_storage_client):
+    @patch("pipelines.dags.src.song_data_pipeline.DVCWrapper")  
+    @patch("pandas.DataFrame.to_csv") 
+    @patch("google.cloud.storage.Client")  # Mock GCS Client
+    def test_load_song_data_success(self, mock_storage_client, mock_to_csv, mock_dvc_wrapper):
         """Test successful data loading from GCS"""
-        # Mocking GCS client and blob behavior
         mock_bucket = MagicMock()
         mock_blob = MagicMock()
-        mock_blob.download_as_string.return_value = b"col1,col2\n1,3\n2,4"
+        mock_blob.download_as_string.return_value = b"col1,col2\n1,3\n2,4"  # Mock CSV data
         mock_bucket.blob.return_value = mock_blob
         mock_storage_client.return_value.get_bucket.return_value = mock_bucket
+        # test inputs
         bucket_name = "test_bucket"
         blob_name = "test_blob.csv"
         result = load_song_data(bucket_name, blob_name)
@@ -36,6 +38,9 @@ class TestLoadSongData(unittest.TestCase):
         pd.testing.assert_frame_equal(result, expected_df)
         mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
         mock_bucket.blob.assert_called_once_with(blob_name)
+        mock_to_csv.assert_called_once() 
+        mock_dvc_wrapper.assert_called_once_with(bucket_name)  # Verify DVCWrapper initialization
+
 
     @patch("google.cloud.storage.Client")
     def test_file_not_found(self, mock_storage_client):
