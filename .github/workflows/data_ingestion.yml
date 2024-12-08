@@ -54,6 +54,13 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_KEY }}
 
+    
+    - name: Initialize GCS folders
+      run: python pipelines/dags/src/gcs_init.py ${{ env.GCS_BUCKET }}
+  
+    - name: Sync src directory to GCS
+      run: python pipelines/dags/src/gcs_sync.py ${{ env.GCS_BUCKET }} pipelines/dags/src
+
     - name: Download Dataset
       run: |
         kaggle datasets download -d ${{ matrix.dataset.kaggle_id }} --unzip -p ./data
@@ -61,222 +68,28 @@ jobs:
         ls -la ./data
 
     - name: Run Anomaly Detection
-      run: |
-        python - <<EOF
-        import tensorflow_data_validation as tfdv
-        import pandas as pd
-        import logging
-        import os
-        
-        # Configure logging
-        logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-        logger = logging.getLogger(__name__)
-
-        def getAnomalies(df: pd.DataFrame):
-            logger.info("Starting anomaly detection process.")
-           
-            # Generate data statistics from the input DataFrame
-            logger.info("Generating data statistics.")
-            data_stats = tfdv.generate_statistics_from_dataframe(df)
-           
-            # Infer a schema from the generated statistics
-            logger.info("Inferring schema from data statistics.")
-            schema = tfdv.infer_schema(statistics=data_stats)
-           
-            # Validate statistics against the inferred schema
-            logger.info("Validating data statistics against schema to find anomalies.")
-            anomalies = tfdv.validate_statistics(statistics=data_stats, schema=schema)
-           
-            # Check if any anomalies are detected and raise error if detected
-            if anomalies.anomaly_info:
-                logger.warning("Anomalies detected in the data.")
-                tfdv.display_anomalies(anomalies)
-                raise ValueError("Anomalies detected in the dataset. Workflow aborted.")
-            else:
-                logger.info("No anomalies detected.")
-
-        # Process files based on matrix configuration
-        if '${{ matrix.dataset.specific_file }}':
-            file_path = os.path.join('./data', '${{ matrix.dataset.specific_file }}')
-            if os.path.exists(file_path):
-                logger.info(f"Processing specific file: {file_path}")
-                df = pd.read_csv(file_path)
-                getAnomalies(df)
-        else:
-            # Process all CSV files in the directory
-            for file in os.listdir('./data'):
-                if file.endswith('.csv'):
-                    file_path = os.path.join('./data', file)
-                    logger.info(f"Processing file: {file_path}")
-                    df = pd.read_csv(file_path)
-                    getAnomalies(df)
-        EOF
-
+      run: python pipelines/dags/src/anomaly_detection.py ./data '${{ matrix.dataset.specific_file }}'
+  
     - name: Upload to GCS with replacement
-      run: |
-        python - <<EOF
-        from google.cloud import storage
-        import os
-        import logging
-        import shutil
-
-        # Configure logging
-        logging.basicConfig(level=logging.INFO)
-        logger = logging.getLogger(__name__)
-
-        def upload_to_gcs(bucket_name, source_dir, destination_path, specific_file=''):
-            try:
-                storage_client = storage.Client()
-                bucket = storage_client.bucket(bucket_name)
-                
-                # Delete existing files
-                logger.info(f"Deleting existing files in gs://{bucket_name}/{destination_path}")
-                blobs = bucket.list_blobs(prefix=destination_path)
-                for blob in blobs:
-                    blob.delete()
-                    logger.info(f"Deleted: gs://{bucket_name}/{blob.name}")
-                
-                # Upload new files
-                total_files = 0
-                total_size = 0
-                
-                # If specific file is specified, only upload that file
-                if specific_file:
-                    files_to_process = [os.path.join(source_dir, specific_file)]
-                else:
-                    files_to_process = []
-                    for root, _, files in os.walk(source_dir):
-                        for file in files:
-                            files_to_process.append(os.path.join(root, file))
-
-                for local_path in files_to_process:
-                    if not os.path.exists(local_path):
-                        logger.warning(f"File not found: {local_path}")
-                        continue
-
-                    file = os.path.basename(local_path)
-                    if file.startswith('.'):
-                        continue
-                        
-                    relative_path = os.path.basename(local_path)
-                    blob_path = f"{destination_path}/{relative_path}"
-                    
-                    blob = bucket.blob(blob_path)
-                    blob.upload_from_filename(local_path)
-                    
-                    size = os.path.getsize(local_path) / (1024 * 1024)  # Size in MB
-                    total_size += size
-                    total_files += 1
-                    
-                    logger.info(f"Uploaded {local_path} ({size:.2f} MB) to gs://{bucket_name}/{blob_path}")
-                
-                logger.info(f"Upload complete. Total files: {total_files}, Total size: {total_size:.2f} MB")
-                
-            except Exception as e:
-                logger.error(f"Error during upload: {str(e)}")
-                raise
-
-        upload_to_gcs(
-            '${{ env.GCS_BUCKET }}',
-            './data',
-            '${{ matrix.dataset.gcs_path }}',
-            '${{ matrix.dataset.specific_file }}'
-        )
-        EOF
+      run: python pipelines/dags/src/gcs_upload.py '${{ env.GCS_BUCKET }}' './data' '${{ matrix.dataset.gcs_path }}' '${{ matrix.dataset.specific_file }}'
 
     - name: Bias Mitigation
-      run: |
-          python - <<EOF
-          from google.cloud import storage
-          import os
-          import logging
-          import importlib.util
-          
-          # Configure logging
-          logging.basicConfig(level=logging.INFO)
-          logger = logging.getLogger(__name__)
-          
-          # Download bias mitigation script from GCS
-          def download_from_gcs(bucket_name, source_blob, destination_file):
-              try:
-                  storage_client = storage.Client()
-                  bucket = storage_client.bucket(bucket_name)
-                  blob = bucket.blob(source_blob)
-                  blob.download_to_filename(destination_file)
-                  logger.info(f"Downloaded {source_blob}")
-              except Exception as e:
-                  logger.error(f"Error downloading bias script: {str(e)}")
-                  raise
-          
-          # Download the bias mitigation script
-          download_from_gcs('${{ env.GCS_BUCKET }}', 'src/biasMitigation.py', './biasMitigation.py')
-          
-          # Import the bias mitigation module
-          spec = importlib.util.spec_from_file_location("biasMitigation", "./biasMitigation.py")
-          bias_module = importlib.util.module_from_spec(spec)
-          spec.loader.exec_module(bias_module)
-          
-          def process_and_upload_mitigated_data(bucket_name, source_dir, specific_file=''):
-              try:
-                  storage_client = storage.Client()
-                  bucket = storage_client.bucket(bucket_name)
-                  
-                  # Determine which files to process
-                  if specific_file:
-                      files_to_process = [os.path.join(source_dir, specific_file)]
-                  else:
-                      files_to_process = []
-                      for root, _, files in os.walk(source_dir):
-                          for file in files:
-                              if not file.startswith('.'):
-                                  files_to_process.append(os.path.join(root, file))
-                  
-                  for file_path in files_to_process:
-                      try:
-                          logger.info(f"Running bias mitigation on {file_path}")
-                          
-                          # Run bias mitigation
-                          mitigated_data = bias_module.mitigate_bias(file_path)
-                          
-                          # Save mitigated data with same filename
-                          filename = os.path.basename(file_path)
-                          mitigated_local_path = os.path.join('./data', filename)
-                          
-                          # Save mitigated data based on its type
-                          if isinstance(mitigated_data, (str, bytes)):
-                              with open(mitigated_local_path, 'wb') as f:
-                                  f.write(mitigated_data if isinstance(mitigated_data, bytes) else mitigated_data.encode())
-                          else:
-                              mitigated_data.to_csv(mitigated_local_path, index=False)
-                          
-                          # Upload to GCS with same filename in data/raw directory
-                          bias_blob_path = f"data/raw/{filename}"
-                          bias_blob = bucket.blob(bias_blob_path)
-                          bias_blob.upload_from_filename(mitigated_local_path)
-                          
-                          logger.info(f"Uploaded mitigated data to gs://{bucket_name}/{bias_blob_path}")
-                      
-                      except Exception as e:
-                          logger.error(f"Error processing file {file_path}: {str(e)}")
-                          continue
-                  
-              except Exception as e:
-                  logger.error(f"Error in bias mitigation process: {str(e)}")
-                  raise
-          
-          # Process the dataset
-          process_and_upload_mitigated_data(
-              '${{ env.GCS_BUCKET }}',
-              './data',
-              '${{ matrix.dataset.specific_file }}'
-          )
-          
-          # Clean up the bias mitigation script
-          os.remove('./biasMitigation.py')
-          EOF
+      run: python pipelines/dags/src/bias_mitigation.py '${{ env.GCS_BUCKET }}' './data' '${{ matrix.dataset.specific_file }}'
 
     - name: Cleanup local files
       if: always()
       run: |
         rm -rf ./data
         echo "Cleaned up local files"
+
+    - name: Trigger Data Pipeline
+      if: success()
+      uses: actions/github-script@v6
+      with:
+        script: |
+          await github.rest.actions.createWorkflowDispatch({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            workflow_id: 'data_pipeline.yml',
+            ref: context.ref
+          })

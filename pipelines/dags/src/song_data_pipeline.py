@@ -1,38 +1,63 @@
 import pandas as pd
 from sklearn.preprocessing import StandardScaler
-import os
-import opendatasets as od
 import logging
+from google.cloud import storage
+import io
+from pathlib import Path
+import sys
+import os
+project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+sys.path.append(project_root)
 
+from Vibify.pipelines.dags.src.dvc_wrapper import DVCWrapper  
+
+# Set up logger
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
 # Set up console handler
 console_handler = logging.StreamHandler()
 console_handler.setLevel(logging.DEBUG)
-
 # Define logging format
 formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 console_handler.setFormatter(formatter)
-
 # Add handler to logger
 if not logger.handlers:
     logger.addHandler(console_handler)
 
-def load_song_data() -> pd.DataFrame:
-    """Downloads dataset from Kaggle"""
-    url = f"https://www.kaggle.com/datasets/mrmorj/dataset-of-songs-in-spotify/data?select=genres_v2.csv"
-    file_path = "pipelines/dags/data/raw/song_dataset.csv"
+def load_song_data(bucket_name: str, blob_name: str) -> pd.DataFrame:
+    """
+    Loads dataset from Google Cloud Storage bucket
     
-    logger.info("Starting download of song dataset")
+    Args:
+        bucket_name (str): Name of the GCS bucket
+        blob_name (str): Path to the file within the bucket
+        
+    Returns:
+        pd.DataFrame: Loaded dataset or None if error occurs
+    """
+    logger.info(f"Starting download of song dataset from GCS bucket: {bucket_name}")
     try:
-        od.download_kaggle_dataset(url, file_path)
-        print(file_path)
-        df = pd.read_csv(file_path)
-        logger.info("Data loaded successfully.")
+        # Initialize GCS client
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+
+        # Download as string
+        content = blob.download_as_string()
+        
+        # Load into pandas
+        df = pd.read_csv(io.StringIO(content.decode('utf-8')))
+        logger.info("Data loaded successfully from GCS.")
+
+        if df is not None:
+            raw_path = f"data/raw/{Path(blob_name).name}"
+            df.to_csv(raw_path, index=False)
+            dvc = DVCWrapper(bucket_name)
+            dvc.track_file(raw_path)
+
         return df
-    except FileNotFoundError:
-        logger.error("File not found.")
+    except Exception as e:
+        logger.error(f"Error loading data from GCS: {str(e)}")
         return None
 
 def data_cleaning(df: pd.DataFrame) -> pd.DataFrame:
@@ -64,16 +89,50 @@ def scale_features(df: pd.DataFrame) -> pd.DataFrame:
     logger.info("Feature scaling completed")
     return scaled_df
 
-def save_features(df: pd.DataFrame, output_dir: str = "dags/data/preprocessed") -> None:
-    """Saves the preprocessed dataframe"""
-    logger.info("Saving preprocessed song data to local directory")
-    
-    os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, "preprocessed_features.csv")
-    df.to_csv(output_path, index=False)
-    
-    del df
-    logger.info(f"Preprocessed song data saved to {output_path}")
+def scale_features(df: pd.DataFrame) -> pd.DataFrame:
+    """Scales numerical features in the dataframe and retains non-numerical features."""
+    logger.info("Starting feature scaling")
+    # Separate numerical and non-numerical features
+    numerical_features = df.select_dtypes(include=['float64', 'int64']).columns
+    non_numerical_features = df.select_dtypes(exclude=['float64', 'int64']).columns
+    # Scale numerical features
+    scaler = StandardScaler()
+    scaled_numerical_data = scaler.fit_transform(df[numerical_features])
+    scaled_numerical_df = pd.DataFrame(scaled_numerical_data, columns=numerical_features, index=df.index)
+    # Concatenate scaled numerical features with non-numerical features
+    final_df = pd.concat([scaled_numerical_df, df[non_numerical_features]], axis=1)
+    logger.info("Feature scaling completed")
+    return final_df
 
-if __name__ == "__main__":
-    load_song_data()
+def save_features(df: pd.DataFrame, bucket_name: str, blob_name: str) -> None:
+    """
+    Saves the preprocessed dataframe to GCS
+    
+    Args:
+        df (pd.DataFrame): DataFrame to save
+        bucket_name (str): Name of the GCS bucket
+        blob_name (str): Path where the file should be saved in the bucket
+    """
+    logger.info(f"Saving preprocessed song data to GCS bucket: {bucket_name}")
+    try:
+        # Convert DataFrame to CSV string
+        csv_buffer = df.to_csv(index=False)
+        
+        # Initialize GCS client
+        storage_client = storage.Client()
+        bucket = storage_client.get_bucket(bucket_name)
+        blob = bucket.blob(blob_name)
+        
+        # Upload to GCS
+        blob.upload_from_string(csv_buffer, content_type='text/csv')
+
+        # Add DVC tracking
+        processed_path = f"data/preprocessed/{Path(blob_name).name}"
+        df.to_csv(processed_path, index=False)
+        dvc = DVCWrapper(bucket_name)
+        dvc.track_file(processed_path)
+        
+        del df
+        logger.info(f"Preprocessed song data saved to gs://{bucket_name}/{blob_name}")
+    except Exception as e:
+        logger.error(f"Error saving data to GCS: {str(e)}")

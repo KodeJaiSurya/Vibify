@@ -7,3 +7,9 @@ python-dateutil==2.9.0.post0
 gdown==5.2.0
 dvc==3.56.0
 opendatasets
+mlflow
+spotipy
+# apache-airflow>=2.5.0
+# apache-airflow-providers-google>=10.1.0
+# google-cloud-orchestration-airflow>=1.10.0
+# apache-airflow-providers-slack

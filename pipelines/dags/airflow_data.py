@@ -1,18 +1,43 @@
 from airflow import DAG
+import os
 from airflow.operators.python import PythonOperator
 from airflow import configuration as conf
 from datetime import datetime, timedelta
+from airflow.models import Variable
+from airflow.providers.slack.operators.slack_webhook import SlackWebhookOperator
 
 from src.song_data_pipeline import load_song_data, data_cleaning, scale_features, save_features
-from src.emotion_data_pipeline import download_emotion_data, process_emotion_data, aggregate_filtered_data
+from src.emotion_data_pipeline import init_gcs_handler, process_emotion_data, aggregate_emotion_data
 
 conf.set('core', 'enable_xcom_pickling', 'True')
+bucket_name = Variable.get("BUCKET_NAME")
+
+def task_fail_slack_alert(context):
+    """
+    Callback function for sending Slack alerts on task failure
+    """
+    slack_msg = f"""
+        :red_circle: Task Failed
+        *DAG*: {context.get('task_instance').dag_id}
+        *Task*: {context.get('task_instance').task_id}
+        *Error*: {context.get('exception')}
+    """
+    
+    failed_alert = SlackWebhookOperator(
+        task_id='slack_notification',
+        webhook_token=Variable.get("SLACK_WEBHOOK_URL"),
+        message=slack_msg,
+        channel="#github_notifs"
+    )
+    
+    return failed_alert.execute(context=context)
 
 default_args = {
     'owner': 'Team_Vibe',
     'start_date': datetime(2024, 11, 15),
     'retries': 0, # Number of retries in case of task failure
     'retry_delay': timedelta(minutes=5), # Delay before retries
+    'on_failure_callback': task_fail_slack_alert
 }
 
 dag = DAG(
@@ -28,6 +53,7 @@ load_song_data_task = PythonOperator(
     task_id='load_song_data_task',
     python_callable=load_song_data,
     dag=dag,
+    op_args=[bucket_name, 'data/raw/spotify/genres_v2.csv'],
 )
 
 clean_song_data_task = PythonOperator(
@@ -48,33 +74,41 @@ save_song_data_task = PythonOperator(
     task_id='save_song_data_task',
     python_callable=save_features,
     dag=dag,
-    op_args=[scale_song_data_task.output],
+    op_args=[scale_song_data_task.output, bucket_name, 'data/preprocessed/spotify/genres_v2.csv'],
 )
 
-# Pipeline for emotions with chunking
-download_emotion_data_task = PythonOperator(
-    task_id='download_emotion_data_task',
-    python_callable=download_emotion_data,
+def get_chunk_paths(**context):
+    """Helper function to get chunk paths from XCom"""
+    task_instance = context['task_instance']
+    chunk_paths = task_instance.xcom_pull(task_ids='process_emotion_data_task')
+    return chunk_paths
+
+# Emotion Pipeline tasks
+load_emotion_data_task = PythonOperator(
+    task_id='load_emotion_data_task',
+    python_callable=init_gcs_handler,
     dag=dag,
-    )
+    provide_context=True,
+)
 
 process_emotion_data_task = PythonOperator(
     task_id='process_emotion_data_task',
     python_callable=process_emotion_data,
     dag=dag,
-    op_args=[download_emotion_data_task.output, 1000],
+    provide_context=True,
 )
 
-aggregate_filtered_data_task = PythonOperator(
-    task_id="aggregate_filtered_data_task",
-    python_callable=aggregate_filtered_data,
-    op_args=[process_emotion_data_task.output],
-    dag=dag
+aggregate_emotion_data_task = PythonOperator(
+    task_id='aggregate_emotion_data_task',
+    python_callable=aggregate_emotion_data,
+    dag=dag,
+    provide_context=True,
+    op_args=[get_chunk_paths],  # Pass the function to get chunk paths
 )
 
-#setting task dependencies
+# Set task dependencies
 load_song_data_task >> clean_song_data_task >> scale_song_data_task >> save_song_data_task
-download_emotion_data_task >> process_emotion_data_task >> aggregate_filtered_data_task
+load_emotion_data_task >> process_emotion_data_task >> aggregate_emotion_data_task
 
 if __name__ =='__main__':
     dag.cli()
