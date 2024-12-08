@@ -59,7 +59,7 @@ jobs:
 
       - name: Check Data Anomaly
         run: |
-          python pipelines/dags/src/anomaly.py
+          python pipelines/dags/src/anomaly_detection.py
 
       - name: Run emotion data pipeline
         run: |
