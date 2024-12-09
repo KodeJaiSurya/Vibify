@@ -7,6 +7,7 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   LOCATION: "us-east1"
   ENVIRONMENT_NAME: "data-pipeline"
+  DAGS_BUCKET: "vibify-demo-bucket"
 
 jobs:
   deploy-and-run:
@@ -58,33 +59,8 @@ jobs:
               --worker-storage=1 \
               --min-workers=1 \
               --max-workers=3 \
-              --storage-bucket vibe-demo-bucket 
+              --storage-bucket ${{ env.DAGS_BUCKET }}
           fi
-
-      - name: Create Git Init Script
-        run: |
-          echo '#!/bin/bash
-          cd /home/airflow
-          git init
-          git config --global --add safe.directory /home/airflow' > pipelines/dags/git_init.sh
-
-      - name: Create Git Init DAG
-        run: |
-          echo 'from airflow import DAG
-          from airflow.operators.bash_operator import BashOperator
-          from datetime import datetime
-          
-          dag = DAG(
-              "git_init",
-              start_date=datetime(2024, 1, 1),
-              schedule_interval=None
-          )
-          
-          git_init = BashOperator(
-              task_id="git_init",
-              bash_command="bash /home/airflow/gcs/dags/git_init.sh",
-              dag=dag
-          )' > pipelines/dags/git_init.py
 
       - name: Check and Install Python Dependencies
         run: |
@@ -116,15 +92,6 @@ jobs:
             echo "All required packages are already installed"
           fi
 
-      - name: Get Composer GCS bucket
-        id: get-bucket
-        run: |
-          DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --project=vibify-demo \
-            --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
-          echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
-
       - name: Copy DAGs folder to GCS
         run: |
           gsutil -m cp -r pipelines/dags/* ${{ env.DAGS_BUCKET }}/dags/
@@ -155,16 +122,6 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             variables set -- SLACK_WEBHOOK_URL "${{ secrets.SLACK_WEBHOOK_URL }}"
-
-      - name: Trigger Git Init DAG
-        run: |
-          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --project=vibify-demo \
-            dags trigger -- git_init
-
-      - name: Wait for Git Init
-        run: sleep 60
 
       - name: Trigger Main DAG
         run: |

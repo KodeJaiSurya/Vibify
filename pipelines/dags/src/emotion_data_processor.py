@@ -17,7 +17,7 @@ class DataProcessor:
                  emotion_map: Dict[int, int] = {0: 0, 3: 1, 4: 2, 6: 3},
                  image_width: int = 48,
                  image_height: int = 48,
-                 chunk_size: int = 2000):
+                 chunk_size: int = 1500):
         self.gcs_handler = gcs_handler
         # self.dvc = DVCWrapper(gcs_handler.bucket_name)
         self.selected_emotions = selected_emotions

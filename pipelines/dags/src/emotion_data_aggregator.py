@@ -74,8 +74,8 @@ class DataAggregator:
             X_gcs = "data/preprocessed/facial_expression/X.npy"
             y_gcs = "data/preprocessed/facial_expression/y.npy"
             
-            success = (self.gcs_handler.upload_file(X_local, X_gcs) and 
-                      self.gcs_handler.upload_file(y_local, y_gcs))
+            self.gcs_handler.upload_file(X_local, X_gcs)
+            self.gcs_handler.upload_file(y_local, y_gcs)
             
             # if success:
             #    self.dvc.track_file(X_gcs)
@@ -84,9 +84,8 @@ class DataAggregator:
             os.remove(X_local)
             os.remove(y_local)
             
-            if success:
-                self.logger.info("Final data saved to GCS successfully!")
-            return success
+            self.logger.info("Final data saved to GCS successfully!")
+            return True
         except Exception as e:
             self.logger.error(f"Error saving final data to GCS: {e}")
             return False

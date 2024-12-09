@@ -3,13 +3,13 @@ from sklearn.preprocessing import StandardScaler
 import logging
 from google.cloud import storage
 import io
-from pathlib import Path
-import sys
-import os
-project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
-sys.path.append(project_root)
+# from pathlib import Path
+# import sys
+# import os
+# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
+# sys.path.append(project_root)
 
-from Vibify.pipelines.dags.src.dvc_wrapper import DVCWrapper  
+# from .dvc_wrapper import DVCWrapper
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -49,11 +49,12 @@ def load_song_data(bucket_name: str, blob_name: str) -> pd.DataFrame:
         df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         logger.info("Data loaded successfully from GCS.")
 
-        if df is not None:
-            raw_path = f"data/raw/{Path(blob_name).name}"
-            df.to_csv(raw_path, index=False)
-            # dvc = DVCWrapper(bucket_name)
-            # dvc.track_file(raw_path)
+        # if df is not None:
+        #     raw_path = f"data/raw/{Path(blob_name).name}"
+        #     print()
+        #     df.to_csv(raw_path, index=False)
+        #     dvc = DVCWrapper(bucket_name)
+        #     dvc.track_file(raw_path)
 
         return df
     except Exception as e:
