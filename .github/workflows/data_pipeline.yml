@@ -103,7 +103,7 @@ jobs:
       - name: Copy DAGs folder to GCS
         run: |
           gsutil -m cp -r pipelines/dags/* ${{ env.DAGS_BUCKET }}/dags/
-          
+
       - name: List uploaded DAGs
         run: |
           echo "Listing contents of DAGs folder in GCS:"
@@ -113,7 +113,7 @@ jobs:
         run: |
           # Wait for environment to be ready
           sleep 300
-          
+
           # Set Git environment variable
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
@@ -127,6 +127,9 @@ jobs:
 
       - name: Trigger Main DAG
         run: |
+          # Wait for environment to be ready
+          sleep 300
+          
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
