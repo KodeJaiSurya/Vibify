@@ -7,7 +7,6 @@ env:
   PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
   LOCATION: "us-east1"
   ENVIRONMENT_NAME: "data-pipeline"
-  DAGS_BUCKET: "vibify-demo-bucket"
 
 jobs:
   deploy-and-run:
@@ -59,7 +58,7 @@ jobs:
               --worker-storage=1 \
               --min-workers=1 \
               --max-workers=3 \
-              --storage-bucket ${{ env.DAGS_BUCKET }}
+              --storage-bucket vibe-demo-bucket
           fi
 
       - name: Check and Install Python Dependencies
@@ -92,10 +91,19 @@ jobs:
             echo "All required packages are already installed"
           fi
 
+      - name: Get Composer GCS bucket
+        id: get-bucket
+        run: |
+          DAGS_BUCKET=$(gcloud composer environments describe ${{ env.ENVIRONMENT_NAME }} \
+            --location=${{ env.LOCATION }} \
+            --project=vibify-demo \
+            --format="get(config.dagGcsPrefix)" | sed 's/\/dags//')
+          echo "DAGS_BUCKET=$DAGS_BUCKET" >> $GITHUB_ENV
+
       - name: Copy DAGs folder to GCS
         run: |
           gsutil -m cp -r pipelines/dags/* ${{ env.DAGS_BUCKET }}/dags/
-
+          
       - name: List uploaded DAGs
         run: |
           echo "Listing contents of DAGs folder in GCS:"
@@ -110,7 +118,7 @@ jobs:
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
-            variables set -- GCS_BUCKET_NAME "${{ env.DAGS_BUCKET }}"
+            variables set -- GCS_BUCKET_NAME "vibify-demo-bucket"
 
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
