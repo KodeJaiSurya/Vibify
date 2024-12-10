@@ -7,6 +7,7 @@ on:
       - main
       - kirti
       - jai
+      - anji
     paths:
       - '**'  # triggers build steps for any change
   pull_request:
