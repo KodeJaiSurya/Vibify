@@ -21,7 +21,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 
 class ModelTrainer:
     def __init__(self):
-        self.bucket_name = 'vibebucketoncloudv1'
+        self.bucket_name = 'vibify-demo'
         self.emotion_data_path = "data/preprocessed/facial_expression"
         self.song_data_path = "data/preprocessed/spotify"
         self.local_output_dir = "/tmp/models"
