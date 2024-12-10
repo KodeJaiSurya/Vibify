@@ -4,10 +4,10 @@ on:
   workflow_dispatch:
 
 env:
-  PROJECT_ID: viberain
-  REGION: us-central1
+  PROJECT_ID: vibify-demo
+  REGION: us-east1
   ARTIFACT_REGISTRY: gcr.io
-  REPOSITORY: viberain
+  REPOSITORY: vibify-demo-bucket
   IMAGE_NAME: emotion-training
   IMAGE_TAG: latest
   DOCKERFILE_PATH: pipelines/dags/src/trainer/Dockerfile
@@ -23,7 +23,7 @@ jobs:
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.OLD_GCP_KEY }}
+          credentials_json: ${{ secrets.GCP_KEY }}
           project_id: ${{ env.PROJECT_ID }}
 
       - name: Set up gcloud CLI
