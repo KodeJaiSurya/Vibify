@@ -5,7 +5,6 @@ from typing import List, Tuple
 from pathlib import Path
 import tempfile
 from .emotion_gcs_handler import GCSHandler
-# from .dvc_wrapper import DVCWrapper
 
 class DataAggregator:
     """Handles combining and saving final processed data with GCS integration"""
@@ -14,7 +13,6 @@ class DataAggregator:
         self.gcs_handler = gcs_handler
         self.temp_dir = Path(tempfile.mkdtemp())
         self._setup_logger()
-        # self.dvc = DVCWrapper(gcs_handler.bucket_name)
     
     def _setup_logger(self):
         self.logger = logging.getLogger(__name__)

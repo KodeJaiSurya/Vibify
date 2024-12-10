@@ -1,4 +1,4 @@
 [core]
     remote = myremote
 ['remote "myremote"']
-    url = gs://vibify-demo-bucket
+    url = gs://vibify-dvc-bucket

@@ -54,7 +54,6 @@ jobs:
       with:
         credentials_json: ${{ secrets.GCP_KEY }}
 
-    
     - name: Initialize GCS folders
       run: python pipelines/dags/src/gcs_init.py ${{ env.GCS_BUCKET }}
   

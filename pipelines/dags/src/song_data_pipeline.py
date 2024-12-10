@@ -3,13 +3,6 @@ from sklearn.preprocessing import StandardScaler
 import logging
 from google.cloud import storage
 import io
-# from pathlib import Path
-# import sys
-# import os
-# project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), "../../../.."))
-# sys.path.append(project_root)
-
-# from .dvc_wrapper import DVCWrapper
 
 # Set up logger
 logger = logging.getLogger(__name__)
@@ -48,13 +41,6 @@ def load_song_data(bucket_name: str, blob_name: str) -> pd.DataFrame:
         # Load into pandas
         df = pd.read_csv(io.StringIO(content.decode('utf-8')))
         logger.info("Data loaded successfully from GCS.")
-
-        # if df is not None:
-        #     raw_path = f"data/raw/{Path(blob_name).name}"
-        #     print()
-        #     df.to_csv(raw_path, index=False)
-        #     dvc = DVCWrapper(bucket_name)
-        #     dvc.track_file(raw_path)
 
         return df
     except Exception as e:
@@ -126,12 +112,6 @@ def save_features(df: pd.DataFrame, bucket_name: str, blob_name: str) -> None:
         
         # Upload to GCS
         blob.upload_from_string(csv_buffer, content_type='text/csv')
-
-        # Add DVC tracking
-        # processed_path = f"data/preprocessed/{Path(blob_name).name}"
-        # df.to_csv(processed_path, index=False)
-        # dvc = DVCWrapper(bucket_name)
-        # dvc.track_file(processed_path)
         
         del df
         logger.info(f"Preprocessed song data saved to gs://{bucket_name}/{blob_name}")

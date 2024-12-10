@@ -47,7 +47,7 @@ jobs:
       - name: Setup DVC
         run: |
           dvc init -f
-          dvc remote add -d myremote gs://data_fer2013
+          dvc remote add -d myremote gs://vibify-dvc-bucket
 
       - name: Download data
         run: |
@@ -57,41 +57,21 @@ jobs:
         run: |
           python pipelines/dags/src/anomaly_detection.py
 
-      - name: Run emotion data pipeline
+      - name: Pull DVC data
         run: |
-          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
-          python -m pipelines.dags.src.emotion_data_pipeline  
+          dvc pull -v
 
-      # Train model
-      - name: Run model training script
-        id: model_training
+      - name: Push DVC data
         run: |
-          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH  # Adding the src directory to PYTHONPATH
-          python pipelines/dags/src/emotion_model_pipeline.py 
+          dvc add dags/data/raw/song_dataset.csv
+          dvc push
 
-      # Slack notification for model training success
-      - name: Send Slack notification (model training success)
-        if: steps.model_training.outcome == 'success'
+      - name: Commit DVC changes
         run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training completed successfully!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      # Slack notification for model training failure
-      - name: Send Slack notification (model training failure)
-        if: steps.model_training.outcome == 'failure'
-        run: |
-          curl -X POST -H 'Content-type: application/json' --data '{"text":"Model training failed!"}' ${{ secrets.SLACK_WEBHOOK_URL }}
-
-      # Running model validation
-      - name: Run model validation
-        run: |
-          export PYTHONPATH=$(pwd)/pipelines/dags/src:$PYTHONPATH
-          VALIDATION_RESULT=$(python pipelines/dags/src/validation/modelValidation.py)
-          if [ "$VALIDATION_RESULT" -eq 0 ]; then
-            echo "Validation failed. Exiting..."
-            exit 1
-          else
-            echo "Validation passed."
-          fi
+          git config --local user.email "anjith16@gmail.com"
+          git config --local user.name "anuttan"
+          git add dags/data/raw/song_dataset.csv.dvc .dvc/config
+          git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
       
       # Slack notifications for pipeline success or failure
       - name: Send Slack notification (build success)

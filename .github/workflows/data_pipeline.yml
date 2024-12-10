@@ -111,12 +111,6 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             variables set -- GCS_BUCKET_NAME "${{ env.DAGS_BUCKET }}"
-          
-          # Set each variable in Airflow
-          gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --project=vibify-demo \
-            variables set -- GCP_PROJECT_ID ${{ secrets.GCP_PROJECT_ID }}
 
           gcloud composer environments run ${{ env.ENVIRONMENT_NAME }} \
             --location=${{ env.LOCATION }} \
@@ -129,11 +123,3 @@ jobs:
             --location=${{ env.LOCATION }} \
             --project=vibify-demo \
             dags trigger -- data_pipeline
-
-      - name: Delete Cloud Composer Environment
-        run: |
-          sleep 300 # To see that the dag works properly and to show in video
-          gcloud composer environments delete ${{ env.ENVIRONMENT_NAME }} \
-            --location=${{ env.LOCATION }} \
-            --project=vibify-demo \
-            --quiet
