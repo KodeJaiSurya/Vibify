@@ -7,6 +7,7 @@ on:
       - main
       - kirti
       - jai
+      - anji
     paths:
       - '**'  # triggers build steps for any change
   pull_request:
@@ -57,21 +58,15 @@ jobs:
         run: |
           python pipelines/dags/src/anomaly_detection.py
 
-      - name: Pull DVC data
+      - name: Pull, Push and Commit DVC data
         run: |
           dvc pull -v
-
-      - name: Push DVC data
-        run: |
-          dvc add dags/data/raw/song_dataset.csv
-          dvc push
-
-      - name: Commit DVC changes
-        run: |
-          git config --local user.email "anjith16@gmail.com"
-          git config --local user.name "anuttan"
-          git add dags/data/raw/song_dataset.csv.dvc .dvc/config
-          git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
+          # dvc add pipelines/dags/data/raw/song_dataset.csv
+          # dvc push
+          # git config --local user.email "anjith16@gmail.com"
+          # git config --local user.name "anuttan"
+          # git add pipelines/dags/data/raw/song_dataset.csv.dvc .dvc/config
+          # git commit -m "Update DVC tracked data [skip ci]" || echo "No changes to commit"
       
       # Slack notifications for pipeline success or failure
       - name: Send Slack notification (build success)

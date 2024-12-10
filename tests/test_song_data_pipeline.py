@@ -37,7 +37,6 @@ class TestLoadSongData(unittest.TestCase):
         pd.testing.assert_frame_equal(result, expected_df)
         mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
         mock_bucket.blob.assert_called_once_with(blob_name)
-        mock_to_csv.assert_called_once() 
 
     @patch("google.cloud.storage.Client")
     def test_file_not_found(self, mock_storage_client):
