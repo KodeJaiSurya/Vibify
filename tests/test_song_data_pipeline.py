@@ -20,10 +20,9 @@ from pipelines.dags.src.song_data_pipeline import save_features, load_song_data,
 
 class TestLoadSongData(unittest.TestCase):
 
-    @patch("pipelines.dags.src.song_data_pipeline.DVCWrapper")  
     @patch("pandas.DataFrame.to_csv") 
     @patch("google.cloud.storage.Client")  # Mock GCS Client
-    def test_load_song_data_success(self, mock_storage_client, mock_to_csv, mock_dvc_wrapper):
+    def test_load_song_data_success(self, mock_storage_client, mock_to_csv):
         """Test successful data loading from GCS"""
         mock_bucket = MagicMock()
         mock_blob = MagicMock()
@@ -39,7 +38,6 @@ class TestLoadSongData(unittest.TestCase):
         mock_storage_client.return_value.get_bucket.assert_called_once_with(bucket_name)
         mock_bucket.blob.assert_called_once_with(blob_name)
         mock_to_csv.assert_called_once() 
-
 
     @patch("google.cloud.storage.Client")
     def test_file_not_found(self, mock_storage_client):
